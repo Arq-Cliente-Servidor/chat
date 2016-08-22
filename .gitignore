@@ -1,0 +1,9 @@
+# Executables
+client
+server
+test
+*.exe
+*.out
+*.app
+
+test.cc
