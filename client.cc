@@ -11,9 +11,12 @@ int main(int argc, char *argv[]) {
   context ctx;
   socket s(ctx, socket_type::xrequest);
   s.connect(endpoint);
-  message req;
-  req << 31;
-  s.send(req);
+  int n = atoi(argv[1]);
+  for (int i = 0; i < 1000; i++) {
+    message req;
+    req << n * i;
+    s.send(req);
+  }
   int x;
   cin >> x;
   cout << "Finished." << endl;

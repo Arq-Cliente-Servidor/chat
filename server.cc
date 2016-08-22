@@ -16,9 +16,10 @@ int main(int argc, char *argv[]) {
   s.bind(endpoint);
   while (true) {
     cout << "Receiving message..." << endl;
+
     message req;
     s.receive(req);
-    cout << "Parts: " << req.parts() << endl;
+    // cout << "Parts: " << req.parts() << endl;
     string identity;
     int data;
     req >> identity >> data;
