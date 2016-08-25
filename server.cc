@@ -44,9 +44,10 @@ public:
 
   void newUser(const string &name, const string &pwd, const string &id) {
     if (users.count(name)) {
-      cout << "User is already registered" << endl;
+      cout << "User " << name << " is already registered" << endl;
     } else {
       users[name] = User(name, pwd, id);
+      cout << "User " << name << " has successfully registered" << endl;
     }
   }
 
@@ -77,7 +78,7 @@ void login(message &msg, const string &sender, ServerState &server) {
   if (server.login(userName, password, sender)) {
     cout << "User " << userName << " joins the chat server" << endl;
   } else {
-    cerr << "Wrong user/password " << endl;
+    cerr << "Wrong user/password" << endl;
   }
 }
 
@@ -104,6 +105,7 @@ void chatTo(message &msg, ServerState &server, socket &s) {
   string id = server.chatTo(nameFriend);
 
   if (id.size()) {
+    cout << "PARTS: " << msg.parts() << endl;
     msg << "receive" << id << nameSender << text;
     s.send(msg);
   } else {
@@ -121,11 +123,9 @@ void dispatch(message &msg, ServerState &server, socket &s) {
 
   if (action == "login") {
     login(msg, sender, server);
-  }
-  if (action == "register") {
+  } else if (action == "register") {
     newUser(msg, sender, server);
-  }
-  if (action == "chatTo") {
+  } else if (action == "chatTo") {
     chatTo(msg, server, s);
   } else {
     cerr << "Action not supported/implemented" << endl;

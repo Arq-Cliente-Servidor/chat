@@ -9,7 +9,7 @@ using namespace std;
 using namespace zmqpp;
 
 int main(int argc, char *argv[]) {
-  if (argc != 5) {
+  if (argc < 5) {
     cerr << "Invalid arguments" << endl;
     return EXIT_FAILURE;
   }
@@ -24,8 +24,8 @@ int main(int argc, char *argv[]) {
 
   cout << "Connecting to: " << sckt << endl;
   s.connect(sckt);
-
   message msg;
+
   if (action == "chatTo") {
     string text, line;
     string from(argv[3]);
@@ -54,18 +54,19 @@ int main(int argc, char *argv[]) {
     string act;
     rep >> act;
 
+    cout << "ACT: " << id << " " << act << endl;
     if (act == "receive") {
       string idReceive;
       rep >> idReceive;
 
-      if (id == idReceive) {
-        string nameSender;
-        rep >> nameSender;
-        string textContent;
-        rep >> textContent;
+      // if (id == idReceive) {
+      string nameSender;
+      rep >> nameSender;
+      string textContent;
+      rep >> textContent;
 
-        cout << nameSender << " say: " << textContent << endl;
-      }
+      cout << nameSender << " say: " << textContent << endl;
+      // }
     }
   }
 
