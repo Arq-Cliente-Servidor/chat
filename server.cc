@@ -51,7 +51,7 @@ class ServerState {
 private:
   // conenected users
   unordered_map<string, User> users;
-  unordered_map<string, list<User>> groups;
+  unordered_map<string, list<string>> groups;
 
 public:
   ServerState() {}
@@ -86,9 +86,69 @@ public:
   void addFriend(const string &from, const string &to) {
     if (users.count(to)) {
       users[from].addContact(to);
+      users[to].addContact(from);
       cout << "Friend added" << endl;
     }
     else cerr << "User not found" << endl;
+  }
+
+  void createGroup(const string &groupName, const string &name) {
+    if (groups.count(groupName)) {
+      cerr << "Group " << groupName << " is already created" << endl;
+    }
+    else {
+      groups[groupName].push_back(name);
+    }
+  }
+
+  bool belongsGroup(const string &groupName, const string &name) {
+    if (!groups.count(groupName)) return false;
+    for (const auto &it : groups[groupName]) {
+      if (it == name) return true;
+    }
+    return false;
+  }
+
+  string getId(const string &name) {
+    if (users.count(name)) {
+      return users[name].getId();
+    }
+    else return "";
+  }
+
+  bool addGroup(const string &groupName, const string &name, const string &senderName) {
+    if (!groups.count(groupName)) {
+      cerr << "Group " << groupName << " does not exist" << endl;
+      return false;
+    }
+    else if (belongsGroup(groupName, name)) {
+      cerr << name << " already belongs to the group " << groupName << endl;
+      return false;
+    }
+    else if (users.count(name) and users[senderName].isFriend(name)) {
+      groups[groupName].push_back(name);
+      return true;
+    }
+    else {
+      cerr << "User not found/not is your friend" << endl;
+      return false;
+    }
+  }
+
+  void groupChat(const string &groupName, const string &senderName, const string &text, socket &s) {
+    if (groups.count(groupName)) {
+      for (const auto &it : groups[groupName]) {
+        string id = getId(it);
+        if (id.size()) {
+          message m;
+          m << id << "groupReceive" << senderName << text;
+          s.send(m);
+        }
+      }
+    }
+    else {
+      cerr << "Group not found" << endl;
+    }
   }
 };
 
@@ -136,15 +196,41 @@ void chatTo(message &msg, ServerState &server, socket &s) {
 }
 
 void createGroup(message &msg, ServerState &server) {
- // TODO existencia de grupo, añadir
+  string groupName;
+  msg >> groupName;
+  string senderName;
+  msg >> senderName;
+  server.createGroup(groupName, senderName);
 }
 
 void addGroup(message &msg, ServerState &server, socket &s) {
-  // TODO usuario exista, tengo que estar en el grupo para añadir amigos
+  string groupName;
+  msg >> groupName;
+  string senderName;
+  msg >> senderName;
+  string friendName;
+  msg >> friendName;
+
+  if (server.addGroup(groupName, friendName, senderName)) {
+    string id = server.chatTo(senderName, friendName);
+    if (id.size()) {
+      message m;
+      m << id << "addedGroup" << "Your added in the group " << groupName;
+      s.send(m);
+    } else {
+      cout << "The user " << friendName << " is offline/not exist/not your friend" << endl;
+    }
+  }
 }
 
 void groupChat(message &msg, ServerState &server, socket &s) {
-  // TODO mandar mensajes
+  string groupName;
+  msg >> groupName;
+  string senderName;
+  msg >> senderName;
+  string text;
+  msg >> text;
+  server.groupChat(groupName, senderName, text, s);
 }
 
 void addFriend(message &msg, ServerState &server) {
@@ -156,6 +242,7 @@ void addFriend(message &msg, ServerState &server) {
 }
 
 void dispatch(message &msg, ServerState &server, socket &s) {
+  // TODO validar id con sendername, mensajes a todo
   assert(msg.parts() > 2);
   string sender;
   msg >> sender;

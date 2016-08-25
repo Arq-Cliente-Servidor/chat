@@ -37,10 +37,37 @@ int main(int argc, char *argv[]) {
     }
 
     msg << action << from << to << text;
-  } else {
+  } else if (action == "addFriend") {
+    string senderName(argv[3]);
+    string friendName(argv[4]);
+    msg << action << senderName << friendName;
+  } else if (action == "createGroup") {
+    string groupName(argv[3]);
+    string senderName(argv[4]);
+    msg << action << groupName << senderName;
+  } else if (action == "addGroup") {
+    string groupName(argv[3]);
+    string senderName(argv[4]);
+    string friendName(argv[5]);
+    msg << action << groupName << senderName << friendName;
+  } else if (action == "groupChat") {
+    string text, line;
+    string groupName(argv[3]);
+    string senderName(argv[4]);
+
+    for (int i = 5; i < argc; i++) {
+      line = string(argv[i]);
+      text += line + " ";
+    }
+
+    msg << action << groupName << senderName << text;
+  } else if (action == "login" or action == "register") {
     string userName(argv[3]);
     string password(argv[4]);
     msg << action << userName << password;
+  } else {
+    cerr << "Wrong action" << endl;
+    return EXIT_FAILURE;
   }
 
   s.send(msg);
@@ -57,8 +84,21 @@ int main(int argc, char *argv[]) {
       rep >> nameSender;
       string textContent;
       rep >> textContent;
-
       cout << nameSender << " say: " << textContent << endl;
+    } else if (act == "groupReceive") {
+      string groupName;
+      rep >> groupName;
+      string senderName;
+      rep >> senderName;
+      string text;
+      rep >> text;
+      cout << "[" <<groupName << "] " << senderName << " say: " << text << endl;
+    } else if (act == "addedGroup") {
+      string text;
+      rep >> text;
+      string groupName;
+      rep >> groupName;
+      cout << text << "[" << groupName << "]" << endl;
     }
   }
 
