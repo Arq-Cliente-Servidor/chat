@@ -49,24 +49,16 @@ int main(int argc, char *argv[]) {
     message rep;
     s.receive(rep);
 
-    string id;
-    rep >> id;
     string act;
     rep >> act;
 
-    cout << "ACT: " << id << " " << act << endl;
     if (act == "receive") {
-      string idReceive;
-      rep >> idReceive;
-
-      // if (id == idReceive) {
       string nameSender;
       rep >> nameSender;
       string textContent;
       rep >> textContent;
 
       cout << nameSender << " say: " << textContent << endl;
-      // }
     }
   }
 
