@@ -22,22 +22,32 @@ public:
       : name(name), password(pwd), netId(id), connected(false) {}
 
   bool isPassword(const string &pwd) const { return password == pwd; }
+
+  string getId() const { return netId; }
+
   void connect(const string &id) {
     connected = true;
     netId = id;
   }
+
+  bool isConnected() const { return connected; }
 };
 
 class ServerState {
 private:
   // conenected users
   unordered_map<string, User> users;
+  unordered_map<string, list<User>> groups;
 
 public:
   ServerState() {}
 
   void newUser(const string &name, const string &pwd, const string &id) {
-    users[name] = User(name, pwd, id);
+    if (users.count(name)) {
+      cout << "User is already registered" << endl;
+    } else {
+      users[name] = User(name, pwd, id);
+    }
   }
 
   bool login(const string &name, const string &pwd, const string &id) {
@@ -49,6 +59,13 @@ public:
       return ok;
     }
     return false;
+  }
+
+  string chatTo(const string &name) {
+    if (users.count(name) and users[name].isConnected()) {
+      return users[name].getId();
+    } else
+      return "";
   }
 };
 
@@ -64,7 +81,37 @@ void login(message &msg, const string &sender, ServerState &server) {
   }
 }
 
-void dispatch(message &msg, ServerState &server) {
+void newUser(message &msg, const string &sender, ServerState &server) {
+  string userName;
+  msg >> userName;
+
+  string password;
+  msg >> password;
+  server.newUser(userName, password, sender);
+}
+
+void chatTo(message &msg, ServerState &server, socket &s) {
+  string nameSender;
+  msg >> nameSender;
+
+  string nameFriend;
+  msg >> nameFriend;
+
+  string text;
+  msg >> text;
+
+  // Extract the id of the user
+  string id = server.chatTo(nameFriend);
+
+  if (id.size()) {
+    msg << "receive" << id << nameSender << text;
+    s.send(msg);
+  } else {
+    cout << "The user " << nameFriend << " is offline/not exist" << endl;
+  }
+}
+
+void dispatch(message &msg, ServerState &server, socket &s) {
   assert(msg.parts() > 2);
   string sender;
   msg >> sender;
@@ -74,6 +121,12 @@ void dispatch(message &msg, ServerState &server) {
 
   if (action == "login") {
     login(msg, sender, server);
+  }
+  if (action == "register") {
+    newUser(msg, sender, server);
+  }
+  if (action == "chatTo") {
+    chatTo(msg, server, s);
   } else {
     cerr << "Action not supported/implemented" << endl;
   }
@@ -88,10 +141,11 @@ int main(int argc, char *argv[]) {
 
   ServerState state;
   state.newUser("sebas", "123", "");
+
   while (true) {
     message req;
     s.receive(req);
-    dispatch(req, state);
+    dispatch(req, state, s);
   }
 
   cout << "Finished." << endl;

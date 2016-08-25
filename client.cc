@@ -9,14 +9,13 @@ using namespace std;
 using namespace zmqpp;
 
 int main(int argc, char *argv[]) {
-  if (argc != 4) {
+  if (argc != 5) {
     cerr << "Invalid arguments" << endl;
     return EXIT_FAILURE;
   }
 
   string address(argv[1]);
-  string userName(argv[2]);
-  string password(argv[3]);
+  string action(argv[2]);
   string sckt("tcp://");
   sckt += address;
 
@@ -26,11 +25,48 @@ int main(int argc, char *argv[]) {
   cout << "Connecting to: " << sckt << endl;
   s.connect(sckt);
 
-  message login;
-  login << "login" << userName << password;
-  s.send(login);
+  message msg;
+  if (action == "chatTo") {
+    string text, line;
+    string from(argv[3]);
+    string to(argv[4]);
+
+    for (int i = 5; i < argc; i++) {
+      line = string(argv[i]);
+      text += line + " ";
+    }
+
+    msg << action << from << to << text;
+  } else {
+    string userName(argv[3]);
+    string password(argv[4]);
+    msg << action << userName << password;
+  }
+
+  s.send(msg);
 
   while (true) {
+    message rep;
+    s.receive(rep);
+
+    string id;
+    rep >> id;
+    string act;
+    rep >> act;
+
+    if (act == "receive") {
+      string idReceive;
+      rep >> idReceive;
+
+      if (id == idReceive) {
+        string nameSender;
+        rep >> nameSender;
+        string textContent;
+        rep >> textContent;
+
+        cout << nameSender << " say: " << textContent << endl;
+      }
+    }
   }
 
   return 0;
