@@ -1,4 +1,5 @@
 // Coded by: Sebastian Duque Restrepo - Carolina Gomez Trejos
+#include "json.hpp"
 #include <cassert>
 #include <cstdlib>
 #include <iostream>
@@ -72,35 +73,57 @@ int main(int argc, char *argv[]) {
 
   s.send(msg);
 
+  int console = fileno(stdin);
+  poller poll;
+  poll.add(s, poller::poll_in);
+  poll.add(console, poller::poll_in);
   while (true) {
-    message rep;
-    s.receive(rep);
-
-    string act;
-    rep >> act;
-
-    if (act == "receive") {
-      string nameSender;
-      rep >> nameSender;
-      string textContent;
-      rep >> textContent;
-      cout << nameSender << " say: " << textContent << endl;
-    } else if (act == "groupReceive") {
-      string groupName;
-      rep >> groupName;
-      string senderName;
-      rep >> senderName;
-      string text;
-      rep >> text;
-      cout << "[" <<groupName << "] " << senderName << " say: " << text << endl;
-    } else if (act == "addedGroup") {
-      string text;
-      rep >> text;
-      string groupName;
-      rep >> groupName;
-      cout << text << "[" << groupName << "]" << endl;
+    if (poll.poll()) { // There are events in at least one of the sockets
+      if (poll.has_input(s)) {
+        // Handle input in socket
+        message m;
+        s.receive(m);
+        cout << "Socket> " << m.parts() << endl;
+      }
+      if (poll.has_input(console)) {
+        // Handle input from console
+        string input;
+        getline(cin, input);
+        cout << "Input> " << input << endl;
+      }
     }
   }
 
-  return 0;
+  // while (true) {
+  //   message rep;
+  //   s.receive(rep);
+  //
+  //   string act;
+  //   rep >> act;
+  //
+  //   if (act == "receive") {
+  //     string nameSender;
+  //     rep >> nameSender;
+  //     string textContent;
+  //     rep >> textContent;
+  //     cout << nameSender << " say: " << textContent << endl;
+  //   } else if (act == "groupReceive") {
+  //     string groupName;
+  //     rep >> groupName;
+  //     string senderName;
+  //     rep >> senderName;
+  //     string text;
+  //     rep >> text;
+  //     cout << "[" <<groupName << "] " << senderName << " say: " << text <<
+  //     endl;
+  //   } else if (act == "addedGroup") {
+  //     string text;
+  //     rep >> text;
+  //     string groupName;
+  //     rep >> groupName;
+  //     cout << text << "[" << groupName << "]" << endl;
+  //   }
+  // }
+
+  return EXIT_SUCCESS;
 }

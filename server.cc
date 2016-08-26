@@ -1,4 +1,5 @@
 // Coded by: Sebastian Duque Restrepo - Carolina Gomez Trejos
+#include "json.hpp"
 #include <cassert>
 #include <iostream>
 #include <string>
@@ -36,8 +37,7 @@ public:
     if (!isFriend(name)) {
       contacts.push_back(name);
       return true;
-    }
-    else {
+    } else {
       return false;
     }
   }
@@ -81,7 +81,8 @@ public:
   }
 
   string chatTo(const string &senderName, const string &friendName) {
-    if (users.count(friendName) and users[friendName].isConnected() and users[senderName].isFriend(friendName)) {
+    if (users.count(friendName) and users[friendName].isConnected() and
+        users[senderName].isFriend(friendName)) {
       return users[friendName].getId();
     } else
       return "";
@@ -133,16 +134,20 @@ public:
     }
   }
 
-  bool addGroup(const string &groupName, const string &friendName, const string &senderName) {
+  bool addGroup(const string &groupName, const string &friendName,
+                const string &senderName) {
     if (!groups.count(groupName)) {
       cerr << "Group " << groupName << " does not exist" << endl;
       return false;
     } else if (belongsGroup(groupName, friendName)) {
-      cerr << friendName << " already belongs to the group " << groupName << endl;
+      cerr << friendName << " already belongs to the group " << groupName
+           << endl;
       return false;
-    } else if (users.count(friendName) and users[senderName].isFriend(friendName)) {
+    } else if (users.count(friendName) and
+               users[senderName].isFriend(friendName)) {
       groups[groupName].push_back(friendName);
-      cout << friendName << " has been added to the group " << groupName << endl;
+      cout << friendName << " has been added to the group " << groupName
+           << endl;
       return true;
     } else {
       cerr << "User not found/not is your friend" << endl;
@@ -150,7 +155,8 @@ public:
     }
   }
 
-  void groupChat(const string &groupName, const string &senderName, const string &text, socket &s) {
+  void groupChat(const string &groupName, const string &senderName,
+                 const string &text, socket &s) {
     if (groups.count(groupName)) {
       for (const auto &it : groups[groupName]) {
         string id = getId(it);
@@ -207,7 +213,8 @@ void chatTo(message &msg, ServerState &server, socket &s) {
     m << id << "receive" << nameSender << text;
     s.send(m);
   } else {
-    cout << "The user " << nameFriend << " is offline/not exist/not your friend" << endl;
+    cout << "The user " << nameFriend << " is offline/not exist/not your friend"
+         << endl;
   }
 }
 
@@ -231,10 +238,12 @@ void addGroup(message &msg, ServerState &server, socket &s) {
     string id = server.chatTo(senderName, friendName);
     if (id.size()) {
       message m;
-      m << id << "addedGroup" << "Your added in the group " << groupName;
+      m << id << "addedGroup"
+        << "Your added in the group " << groupName;
       s.send(m);
     } else {
-      cout << "The user " << friendName << " is offline/not exist/not your friend" << endl;
+      cout << "The user " << friendName
+           << " is offline/not exist/not your friend" << endl;
     }
   }
 }
