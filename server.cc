@@ -31,17 +31,21 @@ public:
   }
 
   bool isConnected() const { return connected; }
-  void addContact(const string &name) {
-    if (!isFriend(name))
+
+  bool addContact(const string &name) {
+    if (!isFriend(name)) {
       contacts.push_back(name);
+      return true;
+    }
     else {
-      cerr << "The user " << name << " is already your friend" << endl;
+      return false;
     }
   }
 
   bool isFriend(const string &contact) {
     for (const auto &it : contacts) {
-      if (it == contact) return true;
+      if (it == contact)
+        return true;
     }
     return false;
   }
@@ -85,26 +89,31 @@ public:
 
   void addFriend(const string &from, const string &to) {
     if (users.count(to)) {
-      users[from].addContact(to);
-      users[to].addContact(from);
-      cout << "Friend added" << endl;
-    }
-    else cerr << "User not found" << endl;
+      if (users[from].addContact(to)) {
+        users[to].addContact(from);
+        cout << "Friend added" << endl;
+      } else {
+        cerr << "The user " << to << " is already your friend" << endl;
+      }
+    } else
+      cerr << "User not found" << endl;
   }
 
   void createGroup(const string &groupName, const string &name) {
     if (groups.count(groupName)) {
       cerr << "Group " << groupName << " is already created" << endl;
-    }
-    else {
+    } else {
       groups[groupName].push_back(name);
+      cout << "Group created" << endl;
     }
   }
 
   bool belongsGroup(const string &groupName, const string &name) {
-    if (!groups.count(groupName)) return false;
+    if (!groups.count(groupName))
+      return false;
     for (const auto &it : groups[groupName]) {
-      if (it == name) return true;
+      if (it == name)
+        return true;
     }
     return false;
   }
@@ -112,24 +121,30 @@ public:
   string getId(const string &name) {
     if (users.count(name)) {
       return users[name].getId();
-    }
-    else return "";
+    } else
+      return "";
   }
 
-  bool addGroup(const string &groupName, const string &name, const string &senderName) {
+  bool checkUser(const string &name, const string &id) {
+    if (users.count(name)) {
+      return users[name].getId() == id;
+    } else {
+      return false;
+    }
+  }
+
+  bool addGroup(const string &groupName, const string &friendName, const string &senderName) {
     if (!groups.count(groupName)) {
       cerr << "Group " << groupName << " does not exist" << endl;
       return false;
-    }
-    else if (belongsGroup(groupName, name)) {
-      cerr << name << " already belongs to the group " << groupName << endl;
+    } else if (belongsGroup(groupName, friendName)) {
+      cerr << friendName << " already belongs to the group " << groupName << endl;
       return false;
-    }
-    else if (users.count(name) and users[senderName].isFriend(name)) {
-      groups[groupName].push_back(name);
+    } else if (users.count(friendName) and users[senderName].isFriend(friendName)) {
+      groups[groupName].push_back(friendName);
+      cout << friendName << " has been added to the group " << groupName << endl;
       return true;
-    }
-    else {
+    } else {
       cerr << "User not found/not is your friend" << endl;
       return false;
     }
@@ -141,12 +156,12 @@ public:
         string id = getId(it);
         if (id.size()) {
           message m;
-          m << id << "groupReceive" << senderName << text;
+          m << id << "groupReceive" << groupName << senderName << text;
           s.send(m);
+          cout << "The message has been sent to the group" << endl;
         }
       }
-    }
-    else {
+    } else {
       cerr << "Group not found" << endl;
     }
   }
@@ -157,6 +172,7 @@ void login(message &msg, const string &sender, ServerState &server) {
   msg >> userName;
   string password;
   msg >> password;
+
   if (server.login(userName, password, sender)) {
     cout << "User " << userName << " joins the chat server" << endl;
   } else {
@@ -228,17 +244,17 @@ void groupChat(message &msg, ServerState &server, socket &s) {
   msg >> groupName;
   string senderName;
   msg >> senderName;
-  string text;
-  msg >> text;
-  server.groupChat(groupName, senderName, text, s);
+  string textContent;
+  msg >> textContent;
+  server.groupChat(groupName, senderName, textContent, s);
 }
 
 void addFriend(message &msg, ServerState &server) {
-  string nameSender;
-  msg >> nameSender;
-  string nameFriend;
-  msg >> nameFriend;
-  server.addFriend(nameSender, nameFriend);
+  string senderName;
+  msg >> senderName;
+  string friendName;
+  msg >> friendName;
+  server.addFriend(senderName, friendName);
 }
 
 void dispatch(message &msg, ServerState &server, socket &s) {
@@ -279,6 +295,7 @@ int main(int argc, char *argv[]) {
   ServerState state;
   state.newUser("sebas", "123", "");
   state.newUser("caro", "123", "");
+  state.newUser("pepe", "123", "");
 
   while (true) {
     message req;
