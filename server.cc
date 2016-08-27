@@ -1,10 +1,12 @@
 // Coded by: Sebastian Duque Restrepo - Carolina Gomez Trejos
-#include "json.hpp"
 #include <cassert>
 #include <iostream>
 #include <string>
 #include <unordered_map>
+#include <vector>
 #include <zmqpp/zmqpp.hpp>
+
+#include "Util/Serializer.hpp"
 
 using namespace std;
 using namespace zmqpp;
@@ -19,12 +21,15 @@ private:
 
 public:
   User() {}
+  // Attribute initialization
   User(const string &name, const string &pwd, const string &id)
       : name(name), password(pwd), netId(id), connected(false) {}
 
   bool isPassword(const string &pwd) const { return password == pwd; }
 
-  string getId() const { return netId; }
+  const string &getId() const { return netId; }
+
+  const string &getName() const { return name; }
 
   void connect(const string &id) {
     connected = true;
@@ -42,9 +47,9 @@ public:
     }
   }
 
-  bool isFriend(const string &contact) {
-    for (const auto &it : contacts) {
-      if (it == contact)
+  bool isFriend(const string &user) {
+    for (const auto &contact : contacts) {
+      if (contact == user)
         return true;
     }
     return false;
@@ -54,11 +59,16 @@ public:
 class ServerState {
 private:
   // conenected users
+  socket &sckt;
   unordered_map<string, User> users;
   unordered_map<string, list<string>> groups;
 
 public:
-  ServerState() {}
+  ServerState(socket &s) : sckt(s) {}
+
+  void send(message &msg) {
+    sckt.send(msg);
+  }
 
   void newUser(const string &name, const string &pwd, const string &id) {
     if (users.count(name)) {
@@ -81,8 +91,7 @@ public:
   }
 
   string chatTo(const string &senderName, const string &friendName) {
-    if (users.count(friendName) and users[friendName].isConnected() and
-        users[senderName].isFriend(friendName)) {
+    if (users.count(friendName) and users[friendName].isConnected() and users[senderName].isFriend(friendName)) {
       return users[friendName].getId();
     } else
       return "";
@@ -126,44 +135,39 @@ public:
       return "";
   }
 
-  bool checkUser(const string &name, const string &id) {
-    if (users.count(name)) {
-      return users[name].getId() == id;
-    } else {
-      return false;
+  string getUserName(const string &id) {
+    for (const auto &user : users) {
+      if (user.second.getId() == id)
+        return user.first;
     }
+    return "";
   }
 
-  bool addGroup(const string &groupName, const string &friendName,
-                const string &senderName) {
+  bool addGroup(const string &groupName, const string &friendName, const string &senderName) {
     if (!groups.count(groupName)) {
       cerr << "Group " << groupName << " does not exist" << endl;
       return false;
     } else if (belongsGroup(groupName, friendName)) {
-      cerr << friendName << " already belongs to the group " << groupName
-           << endl;
+      cerr << friendName << " already belongs to the group " << groupName << endl;
       return false;
-    } else if (users.count(friendName) and
-               users[senderName].isFriend(friendName)) {
+    } else if (users.count(friendName) and users[senderName].isFriend(friendName) and users[friendName].isConnected()) {
       groups[groupName].push_back(friendName);
-      cout << friendName << " has been added to the group " << groupName
-           << endl;
+      cout << friendName << " has been added to the group " << groupName << endl;
       return true;
     } else {
-      cerr << "User not found/not is your friend" << endl;
+      cerr << "User not found/offline/not is your friend" << endl;
       return false;
     }
   }
 
-  void groupChat(const string &groupName, const string &senderName,
-                 const string &text, socket &s) {
+  void groupChat(const string &groupName, const string &sender, const string &senderName, const string &text) {
     if (groups.count(groupName)) {
-      for (const auto &it : groups[groupName]) {
-        string id = getId(it);
-        if (id.size()) {
+      for (const auto &user : groups[groupName]) {
+        string id = getId(user);
+        if (id.size() and id != sender) {
           message m;
           m << id << "groupReceive" << groupName << senderName << text;
-          s.send(m);
+          sckt.send(m);
           cout << "The message has been sent to the group" << endl;
         }
       }
@@ -172,6 +176,16 @@ public:
     }
   }
 };
+
+string join(message &msg, int start = 1) {
+  string result;
+  for (int i = start; i < msg.parts(); i++) {
+    string word;
+    msg >> word;
+    result += word + " ";
+  }
+  return result;
+}
 
 void login(message &msg, const string &sender, ServerState &server) {
   string userName;
@@ -195,42 +209,32 @@ void newUser(message &msg, const string &sender, ServerState &server) {
   server.newUser(userName, password, sender);
 }
 
-void chatTo(message &msg, ServerState &server, socket &s) {
-  string nameSender;
-  msg >> nameSender;
-
-  string nameFriend;
-  msg >> nameFriend;
-
-  string text;
-  msg >> text;
+void chatTo(message &msg, const string &senderName, ServerState &server) {
+  string friendName;
+  msg >> friendName;
+  string textContent = join(msg, 3);
 
   // Extract the id of the user
-  string id = server.chatTo(nameSender, nameFriend);
+  string id = server.chatTo(senderName, friendName);
 
   if (id.size()) {
     message m;
-    m << id << "receive" << nameSender << text;
-    s.send(m);
+    m << id << "receive" << senderName << textContent;
+    server.send(m);
   } else {
-    cout << "The user " << nameFriend << " is offline/not exist/not your friend"
-         << endl;
+    cout << "The user " << friendName << " is offline/not exist/not your friend" << endl;
   }
 }
 
-void createGroup(message &msg, ServerState &server) {
+void createGroup(message &msg, const string &senderName, ServerState &server) {
   string groupName;
   msg >> groupName;
-  string senderName;
-  msg >> senderName;
   server.createGroup(groupName, senderName);
 }
 
-void addGroup(message &msg, ServerState &server, socket &s) {
+void addGroup(message &msg, const string &senderName, ServerState &server) {
   string groupName;
   msg >> groupName;
-  string senderName;
-  msg >> senderName;
   string friendName;
   msg >> friendName;
 
@@ -238,57 +242,51 @@ void addGroup(message &msg, ServerState &server, socket &s) {
     string id = server.chatTo(senderName, friendName);
     if (id.size()) {
       message m;
-      m << id << "addedGroup"
-        << "Your added in the group " << groupName;
-      s.send(m);
+      m << id << "addedGroup" << "Your added in the group " << groupName;
+      server.send(m);
     } else {
-      cout << "The user " << friendName
-           << " is offline/not exist/not your friend" << endl;
+      cout << "The user " << friendName << " is offline/not exist/not your friend" << endl;
     }
   }
 }
 
-void groupChat(message &msg, ServerState &server, socket &s) {
+void groupChat(message &msg, const string &sender, const string &senderName, ServerState &server) {
   string groupName;
   msg >> groupName;
-  string senderName;
-  msg >> senderName;
-  string textContent;
-  msg >> textContent;
-  server.groupChat(groupName, senderName, textContent, s);
+  string textContent = join(msg, 3);
+  server.groupChat(groupName, sender, senderName, textContent);
 }
 
-void addFriend(message &msg, ServerState &server) {
-  string senderName;
-  msg >> senderName;
+void addFriend(message &msg, const string &senderName, ServerState &server) {
   string friendName;
   msg >> friendName;
   server.addFriend(senderName, friendName);
 }
 
-void dispatch(message &msg, ServerState &server, socket &s) {
-  // TODO validar id con sendername, mensajes a todo
+void dispatch(message &msg, ServerState &server) {
+  // TODO mandar mensajes de cada accion al cliente
   assert(msg.parts() > 2);
   string sender;
   msg >> sender;
 
   string action;
   msg >> action;
+  string senderName = server.getUserName(sender);
 
   if (action == "login") {
     login(msg, sender, server);
   } else if (action == "register") {
     newUser(msg, sender, server);
   } else if (action == "chatTo") {
-    chatTo(msg, server, s);
+    chatTo(msg, senderName, server);
   } else if (action == "addFriend") {
-    addFriend(msg, server);
+    addFriend(msg, senderName, server);
   } else if (action == "createGroup") {
-    createGroup(msg, server);
+    createGroup(msg, senderName, server);
   } else if (action == "addGroup") {
-    addGroup(msg, server, s);
+    addGroup(msg, senderName, server);
   } else if (action == "groupChat") {
-    groupChat(msg, server, s);
+    groupChat(msg, sender, senderName, server);
   } else {
     cerr << "Action not supported/implemented" << endl;
   }
@@ -301,7 +299,7 @@ int main(int argc, char *argv[]) {
   socket s(ctx, socket_type::xreply);
   s.bind(endpoint);
 
-  ServerState state;
+  ServerState state(s);
   state.newUser("sebas", "123", "");
   state.newUser("caro", "123", "");
   state.newUser("pepe", "123", "");
@@ -309,8 +307,8 @@ int main(int argc, char *argv[]) {
   while (true) {
     message req;
     s.receive(req);
-    dispatch(req, state, s);
+    dispatch(req, state);
   }
 
-  cout << "Finished." << endl;
+  return EXIT_SUCCESS;
 }
