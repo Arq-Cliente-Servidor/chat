@@ -38,6 +38,14 @@ public:
 
   bool isConnected() const { return connected; }
 
+  bool isFriend(const string &user) {
+    for (const auto &contact : contacts) {
+      if (contact == user)
+      return true;
+    }
+    return false;
+  }
+
   bool addContact(const string &name) {
     if (!isFriend(name)) {
       contacts.push_back(name);
@@ -45,14 +53,6 @@ public:
     } else {
       return false;
     }
-  }
-
-  bool isFriend(const string &user) {
-    for (const auto &contact : contacts) {
-      if (contact == user)
-        return true;
-    }
-    return false;
   }
 };
 
@@ -68,18 +68,29 @@ public:
 
   void send(message &msg) { sckt.send(msg); }
 
+  string getId(const string &name) {
+    if (users.count(name)) return users[name].getId();
+    else return "";
+  }
+
+  string getUserName(const string &id) {
+    for (const auto &user : users) {
+      if (user.second.getId() == id)
+      return user.first;
+    }
+    return "";
+  }
+
   void newUser(const string &name, const string &pwd, const string &id) {
     if (users.count(name)) {
       message m;
-      m << id << "warning"
-        << "this user already exists, please choose another.." << false;
+      m << id << "warning" << "this user already exists, please choose another.." << false;
       send(m);
     } else {
       message m;
       users[name] = User(name, pwd, id);
       cout << "User " << name << " has successfully registered" << endl;
-      m << id << "warning"
-        << "You have successfully registered!." << false;
+      m << id << "warning" << "You have successfully registered!." << false;
       send(m);
     }
   }
@@ -88,27 +99,17 @@ public:
     if (users.count(name)) {
       // User is registered
       bool ok = users[name].isPassword(pwd);
-      if (ok)
-        users[name].connect(id);
+      if (ok) users[name].connect(id);
       return ok;
     }
     return false;
-  }
-
-  string chatTo(const string &senderName, const string &friendName) {
-    if (users.count(friendName) and users[friendName].isConnected() and
-        users[senderName].isFriend(friendName)) {
-      return users[friendName].getId();
-    } else
-      return "";
   }
 
   void addFriend(const string &from, const string &to) {
     if (from == to) {
       message m;
       string id = users[from].getId();
-      m << id << "warning"
-        << "You can not be your own friend!" << true;
+      m << id << "warning" << "You can not be your own friend!" << true;
       send(m);
     } else if (users.count(to)) {
       if (users[from].addContact(to)) {
@@ -142,17 +143,23 @@ public:
     }
   }
 
+  string chatTo(const string &senderName, const string &friendName) {
+    if (users.count(friendName) and users[friendName].isConnected() and users[senderName].isFriend(friendName)) {
+      return users[friendName].getId();
+    } else
+    return "";
+  }
+
   void createGroup(const string &groupName, const string &name) {
     string id = users[name].getId();
     if (groups.count(groupName)) {
       message m;
-      m << id << "warning"
-        << "The group " + groupName + " was already created." << true;
+      m << id << "warning" << "The group " + groupName + " was already created." << true;
       send(m);
     } else {
+      message m;
       string txt = "The group " + groupName + " has been created.";
       groups[groupName].push_back(name);
-      message m;
       cout << txt << endl;
       m << id << "warning" << txt << true;
       send(m);
@@ -160,71 +167,45 @@ public:
   }
 
   bool belongsGroup(const string &groupName, const string &name) {
-    if (!groups.count(groupName))
-      return false;
-    for (const auto &it : groups[groupName]) {
-      if (it == name)
-        return true;
+    if (!groups.count(groupName)) return false;
+    for (const auto &it : groups[groupName]) if (it == name) {
+      return true;
     }
     return false;
   }
 
-  string getId(const string &name) {
-    if (users.count(name)) {
-      return users[name].getId();
-    } else
-      return "";
-  }
-
-  string getUserName(const string &id) {
-    for (const auto &user : users) {
-      if (user.second.getId() == id)
-        return user.first;
-    }
-    return "";
-  }
-
-  bool addGroup(const string &groupName, const string &senderId,
-                const string &friendName, const string &senderName) {
+  bool addGroup(const string &groupName, const string &senderId, const string &friendName, const string &senderName) {
     if (!groups.count(groupName)) {
       message m;
-      m << senderId << "warning"
-        << "The group " + groupName + " does not exist." << true;
+      m << senderId << "warning" << "The group " + groupName + " does not exist." << true;
       send(m);
       return false;
     } else if (belongsGroup(groupName, friendName)) {
       message m;
       string name = (friendName == senderName) ? "You" : friendName;
-      m << senderId << "warning"
-        << name + " was already in the group " + groupName << true;
+      m << senderId << "warning" << name + " was already in the group " + groupName << true;
       send(m);
       return false;
-    } else if (users.count(friendName) and
-               users[senderName].isFriend(friendName) and
-               users[friendName].isConnected()) {
+    } else if (users.count(friendName) and users[senderName].isFriend(friendName) and users[friendName].isConnected()) {
       groups[groupName].push_back(friendName);
       for (const auto &user : groups[groupName]) {
         string id = getId(user);
         if (id.size()) {
           message m;
-          m << id << "warning" << friendName + " has been added to the group."
-            << true;
+          m << id << "warning" << friendName + " has been added to the group." << true;
           send(m);
         }
       }
       return true;
     } else {
       message m;
-      m << senderId << "warning"
-        << "User " + friendName + " not found/offline/not is your friend"
-        << true;
+      m << senderId << "warning" << "User " + friendName + " not found/offline/not is your friend" << true;
       send(m);
       return false;
     }
   }
 
-  void groupChat(const string &groupName, const string &sender,
-                 const string &senderName, const string &text) {
+  void groupChat(const string &groupName, const string &sender, const string &senderName, const string &text) {
     if (groups.count(groupName)) {
       for (const auto &user : groups[groupName]) {
         string id = getId(user);
@@ -236,16 +217,13 @@ public:
       }
     } else {
       message m;
-      m << sender << "warning"
-        << "The group " + groupName + " does not exist/not found." << true;
+      m << sender << "warning" << "The group " + groupName + " does not exist/not found." << true;
       send(m);
     }
   }
 
-  void recordTo(const string &sender, const string &senderName,
-                const string &friendName, vector<uint8_t> &samples,
-                const int sampleCount, const int channelCount,
-                const int sampleRate) {
+  void recordTo(const string &sender, const string &senderName, const string &friendName, vector<uint8_t> &samples,
+                const int sampleCount, const int channelCount, const int sampleRate) {
 
     // Extract the id of the user
     string id = chatTo(senderName, friendName);
@@ -253,43 +231,36 @@ public:
     if (id.size()) {
       message msg;
       string friendId = users[friendName].getId();
-      msg << friendId << "recordReceive" << senderName << samples << sampleCount
-          << channelCount << sampleRate;
+      msg << friendId << "recordReceive" << senderName << samples << sampleCount << channelCount << sampleRate;
       send(msg);
     } else {
       if (senderName == friendName) {
         message m;
-        m << sender << "warning"
-          << "You can not send voice messages to yourself!" << true;
-        server.send(m);
+        m << sender << "warning" << "You can not send voice messages to yourself!" << true;
+        send(m);
       } else {
         message m;
-        m << sender << "warning"
-          << "The user " + friendName + " is offline/not exist/not your friend."
-          << true;
-        server.send(m);
+        m << sender << "warning" << "The user " + friendName + " is offline/not exist/not your friend." << true;
+        send(m);
       }
     }
   }
 
-  void recordGroup(const string &sender, const string &senderName,
-                   const string &friendName, vector<uint8_t> &samples,
-                   const int sampleCount, const int channelCount,
-                   const int sampleRate) {
+  void recordGroup(const string &sender, const string &senderName, const string &groupName, vector<uint8_t> &samples,
+                   const int sampleCount, const int channelCount, const int sampleRate) {
+
     if (groups.count(groupName)) {
       for (const auto &user : groups[groupName]) {
         string id = getId(user);
         if (id.size() and id != sender) {
           message m;
-          m << id << "recordReceiveGroup" << groupName << senderName << samples
-            << sampleCount << channelCount << sampleRate;
+          m << id << "recordReceiveGroup" << groupName << senderName << samples << sampleCount << channelCount << sampleRate;
           send(m);
         }
       }
     } else {
       message m;
-      m << sender << "warning"
-        << "The group " + groupName + " does not exist/not found." << true;
+      m << sender << "warning" << "The group " + groupName + " does not exist/not found." << true;
       send(m);
     }
   }
@@ -305,12 +276,10 @@ string join(message &msg, int start = 1) {
   return result;
 }
 
-bool checker(const message &msg, int parts, const string &sender,
-             ServerState &server) {
+bool checker(const message &msg, int parts, const string &sender, ServerState &server) {
   if (msg.parts() < parts) {
     message m;
-    string txt =
-        "Error! expected at least " + to_string(parts - 1) + " arguments";
+    string txt = "Error! expected at least " + to_string(parts - 1) + " arguments";
     m << sender << "warning" << txt << true;
     server.send(m);
     return false;
@@ -318,32 +287,8 @@ bool checker(const message &msg, int parts, const string &sender,
   return true;
 }
 
-void login(message &msg, const string &sender, ServerState &server) {
-  if (!checker(msg, 4, sender, server))
-    return;
-
-  string userName;
-  msg >> userName;
-  string password;
-  msg >> password;
-
-  if (server.login(userName, password, sender)) {
-    message m;
-    cout << "User " << userName << " joins the chat server." << endl;
-    m << sender << "warning"
-      << "Your welcome!" << true;
-    server.send(m);
-  } else {
-    message m;
-    m << sender << "warning"
-      << "Wrong userName/password." << false;
-    server.send(m);
-  }
-}
-
 void newUser(message &msg, const string &sender, ServerState &server) {
-  if (!checker(msg, 4, sender, server))
-    return;
+  if (!checker(msg, 4, sender, server)) return;
 
   string userName;
   msg >> userName;
@@ -353,10 +298,36 @@ void newUser(message &msg, const string &sender, ServerState &server) {
   server.newUser(userName, password, sender);
 }
 
-void chatTo(message &msg, const string &sender, const string &senderName,
-            ServerState &server) {
-  if (!checker(msg, 4, sender, server))
-    return;
+void login(message &msg, const string &sender, ServerState &server) {
+  if (!checker(msg, 4, sender, server)) return;
+
+  string userName;
+  msg >> userName;
+  string password;
+  msg >> password;
+
+  if (server.login(userName, password, sender)) {
+    message m;
+    cout << "User " << userName << " joins the chat server." << endl;
+    m << sender << "warning" << "Your welcome!" << true;
+    server.send(m);
+  } else {
+    message m;
+    m << sender << "warning" << "Wrong userName/password." << false;
+    server.send(m);
+  }
+}
+
+void addFriend(message &msg, const string &sender, const string &senderName, ServerState &server) {
+  if (!checker(msg, 3, sender, server)) return;
+
+  string friendName;
+  msg >> friendName;
+  server.addFriend(senderName, friendName);
+}
+
+void chatTo(message &msg, const string &sender, const string &senderName, ServerState &server) {
+  if (!checker(msg, 4, sender, server)) return;
 
   string friendName;
   msg >> friendName;
@@ -372,33 +343,26 @@ void chatTo(message &msg, const string &sender, const string &senderName,
   } else {
     if (senderName == friendName) {
       message m;
-      m << sender << "warning"
-        << "You can not send messages to yourself!" << true;
+      m << sender << "warning" << "You can not send messages to yourself!" << true;
       server.send(m);
     } else {
       message m;
-      m << sender << "warning"
-        << "The user " + friendName + " is offline/not exist/not your friend."
-        << true;
+      m << sender << "warning" << "The user " + friendName + " is offline/not exist/not your friend." << true;
       server.send(m);
     }
   }
 }
 
-void createGroup(message &msg, const string &sender, const string &senderName,
-                 ServerState &server) {
-  if (!checker(msg, 3, sender, server))
-    return;
+void createGroup(message &msg, const string &sender, const string &senderName, ServerState &server) {
+  if (!checker(msg, 3, sender, server)) return;
 
   string groupName;
   msg >> groupName;
   server.createGroup(groupName, senderName);
 }
 
-void addGroup(message &msg, const string &sender, const string &senderName,
-              ServerState &server) {
-  if (!checker(msg, 4, sender, server))
-    return;
+void addGroup(message &msg, const string &sender, const string &senderName, ServerState &server) {
+  if (!checker(msg, 4, sender, server)) return;
 
   string groupName;
   msg >> groupName;
@@ -409,20 +373,16 @@ void addGroup(message &msg, const string &sender, const string &senderName,
     string id = server.chatTo(senderName, friendName);
     if (id.size()) {
       message m;
-      m << id << "addedGroup"
-        << "Your added in the group " << groupName;
+      m << id << "addedGroup" << "Your added in the group " << groupName;
       server.send(m);
     } else {
-      cout << "The user " << friendName
-           << " is offline/not exist/not your friend" << endl;
+      cout << "The user " << friendName << " is offline/not exist/not your friend" << endl;
     }
   }
 }
 
-void groupChat(message &msg, const string &sender, const string &senderName,
-               ServerState &server) {
-  if (!checker(msg, 4, sender, server))
-    return;
+void groupChat(message &msg, const string &sender, const string &senderName, ServerState &server) {
+  if (!checker(msg, 4, sender, server)) return;
 
   string groupName;
   msg >> groupName;
@@ -430,44 +390,43 @@ void groupChat(message &msg, const string &sender, const string &senderName,
   server.groupChat(groupName, sender, senderName, textContent);
 }
 
-void addFriend(message &msg, const string &sender, const string &senderName,
-               ServerState &server) {
-  if (!checker(msg, 3, sender, server))
-    return;
-
-  string friendName;
-  msg >> friendName;
-  server.addFriend(senderName, friendName);
-}
-
-void recordTo(message &msg, const string &sender, const string &senderName,
-              ServerState &server) {
-  if (checker(msg, 7, const string &sender, ServerState &server))
-    return;
+void recordTo(message &msg, const string &sender, const string &senderName, ServerState &server) {
+  if (checker(msg, 7, sender, server)) return;
 
   string friendName;
   msg >> friendName;
   vector<uint8_t> samples;
-  msg >> sample;
+  msg >> samples;
   int sampleCount;
   msg >> sampleCount;
   int channelCount;
   msg >> channelCount;
   int sampleRate;
   msg >> sampleRate;
-  server.recordTo(sender, senderName, friendName, samples, sampleCount,
-                  channelCount, sampleRate);
+  server.recordTo(sender, senderName, friendName, samples, sampleCount, channelCount, sampleRate);
 }
 
-void recordGroup(message &msg, const string &sender, const string &senderName,
-                 ServerState &server) {}
+void recordGroup(message &msg, const string &sender, const string &senderName, ServerState &server) {
+  if (checker(msg, 7, sender, server)) return;
+
+  string groupName;
+  msg >> groupName;
+  vector<uint8_t> samples;
+  msg >> samples;
+  int sampleCount;
+  msg >> sampleCount;
+  int channelCount;
+  msg >> channelCount;
+  int sampleRate;
+  msg >> sampleRate;
+  server.recordGroup(sender, senderName, groupName, samples, sampleCount, channelCount, sampleRate);
+}
 
 void dispatch(message &msg, ServerState &server) {
   string sender;
   msg >> sender;
 
-  if (!checker(msg, 3, sender, server))
-    return;
+  if (!checker(msg, 3, sender, server)) return;
 
   string action;
   msg >> action;
@@ -493,8 +452,7 @@ void dispatch(message &msg, ServerState &server) {
     recordGroup(msg, sender, senderName, server);
   } else {
     message m;
-    m << sender << "warning"
-      << "The action " + action + " is not supported/implemented." << true;
+    m << sender << "warning" << "The action " + action + " is not supported/implemented." << true;
     server.send(m);
   }
 }
