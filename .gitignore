@@ -5,5 +5,7 @@ test
 *.exe
 *.out
 *.app
+examples/sound
+examples/soundCapture
 
 test.cc
