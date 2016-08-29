@@ -132,8 +132,11 @@ public:
         m << id << "warning" << txt << true;
         send(m);
       }
-    } else
-      cerr << "User not found" << endl;
+    } else {
+      message m;
+      m << users[from].getId() << "warning" << "The user " + to + " is not found" << true;
+      send(m);
+    }
   }
 
   void createGroup(const string &groupName, const string &name) {
