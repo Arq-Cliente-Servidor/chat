@@ -4,10 +4,12 @@
 
 using namespace std;
 
+const string path = "/home/sebastian/Escritorio/cliente servidor/chat1.0/examples/resources/";
+
 void playSound() {
   // Load a sound buffer from a wav file
   sf::SoundBuffer buffer;
-  if (!buffer.loadFromFile("resources/canary.wav"))
+  if (!buffer.loadFromFile(path + "canary.wav"))
     return;
 
   // Display sound informations
@@ -35,7 +37,7 @@ void playSound() {
 void playMusic(const string &filename) {
   // Load an ogg music file
   sf::Music music;
-  if (!music.openFromFile("resources/" + filename))
+  if (!music.openFromFile(path + filename))
     return;
 
   // Diplsay music informations
