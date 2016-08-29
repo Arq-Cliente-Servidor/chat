@@ -21,7 +21,7 @@ vector<string> tokenize(string &input) {
   return result;
 }
 
-void attends(message &rep) {
+bool attends(message &rep) {
   string act;
   rep >> act;
 
@@ -53,7 +53,11 @@ void attends(message &rep) {
     string txt;
     rep >> txt;
     cout << txt << endl;
+    bool ok;
+    rep >> ok;
+    return ok;
   }
+  return true;
 }
 
 int main(int argc, char *argv[]) {
@@ -95,7 +99,8 @@ int main(int argc, char *argv[]) {
         // Handle input in socket
         message msg;
         s.receive(msg);
-        attends(msg);
+        if (!attends(msg))
+          return EXIT_FAILURE;
       }
       if (poll.has_input(console)) {
         // Handle input from console

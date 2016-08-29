@@ -72,10 +72,15 @@ public:
 
   void newUser(const string &name, const string &pwd, const string &id) {
     if (users.count(name)) {
-      cerr << "User " << name << " is already registered" << endl;
+      message m;
+      m << id << "warning" << "this user already exists, please choose another.." << false;
+      send(m);
     } else {
+      message m;
       users[name] = User(name, pwd, id);
       cout << "User " << name << " has successfully registered" << endl;
+      m << id << "warning" << "You have successfully registered!." << false;
+      send(m);
     }
   }
 
@@ -98,23 +103,52 @@ public:
   }
 
   void addFriend(const string &from, const string &to) {
-    if (users.count(to)) {
+    if (from == to) {
+      message m;
+      string id = users[from].getId();
+      m << id << "warning" << "You can not be your own friend!" << true;
+      send(m);
+    } else if (users.count(to)) {
       if (users[from].addContact(to)) {
         users[to].addContact(from);
-        cout << "Friend added" << endl;
+
+        // Messages for me
+        string fromId = users[from].getId();
+        string txt1 = to + " is already your friend.";
+        message m1;
+        m1 << fromId << "warning" << txt1 << true;
+        send(m1);
+
+        // Messages for my friend
+        string toId = users[to].getId();
+        string txt2 = from + " has added you as your friend.";
+        message m2;
+        m2 << toId << "warning"<< txt2 << true;
+        send(m2);
       } else {
-        cerr << "The user " << to << " is already your friend" << endl;
+        string id = users[from].getId();
+        string txt = "The user " + to + " was already your friend.";
+        message m;
+        m << id << "warning" << txt << true;
+        send(m);
       }
     } else
       cerr << "User not found" << endl;
   }
 
   void createGroup(const string &groupName, const string &name) {
+    string id = users[name].getId();
     if (groups.count(groupName)) {
-      cerr << "Group " << groupName << " is already created" << endl;
+      message m;
+      m << id << "warning" << "The group " + groupName + " was already created." << true;
+      send(m);
     } else {
+      string txt = "The group " + groupName + " has been created.";
       groups[groupName].push_back(name);
-      cout << "Group created" << endl;
+      message m;
+      cout << txt << endl;
+      m << id << "warning" << txt << true;
+      send(m);
     }
   }
 
@@ -143,19 +177,33 @@ public:
     return "";
   }
 
-  bool addGroup(const string &groupName, const string &friendName, const string &senderName) {
+  bool addGroup(const string &groupName, const string &senderId, const string &friendName, const string &senderName) {
     if (!groups.count(groupName)) {
-      cerr << "Group " << groupName << " does not exist" << endl;
+      message m;
+      m << senderId << "warning" << "The group " + groupName + " does not exist." << true;
+      send(m);
       return false;
     } else if (belongsGroup(groupName, friendName)) {
-      cerr << friendName << " already belongs to the group " << groupName << endl;
+      message m;
+      string name = (friendName == senderName)? "You" : friendName;
+      m << senderId << "warning" << name + " was already in the group " + groupName << true;
+      send(m);
       return false;
     } else if (users.count(friendName) and users[senderName].isFriend(friendName) and users[friendName].isConnected()) {
       groups[groupName].push_back(friendName);
-      cout << friendName << " has been added to the group " << groupName << endl;
+      for (const auto &user : groups[groupName]) {
+        string id = getId(user);
+        if (id.size()) {
+          message m;
+          m << id << "warning" << friendName + " has been added to the group." << true;
+          send(m);
+        }
+      }
       return true;
     } else {
-      cerr << "User not found/offline/not is your friend" << endl;
+      message m;
+      m << senderId << "warning" << "User " + friendName + " not found/offline/not is your friend" << true;
+      send(m);
       return false;
     }
   }
@@ -167,12 +215,13 @@ public:
         if (id.size() and id != sender) {
           message m;
           m << id << "groupReceive" << groupName << senderName << text;
-          sckt.send(m);
-          cout << "The message has been sent to the group" << endl;
+          send(m);
         }
       }
     } else {
-      cerr << "Group not found" << endl;
+      message m;
+      m << sender << "warning" << "The group " + groupName + " does not exist/not found." << true;
+      send(m);
     }
   }
 };
@@ -187,20 +236,40 @@ string join(message &msg, int start = 1) {
   return result;
 }
 
+bool checker(const message &msg, int parts, const string &sender, ServerState &server) {
+  if (msg.parts() < parts) {
+    message m;
+    string txt = "Error! expected at least " + to_string(parts - 1) + " arguments";
+    m << sender << "warning" << txt << true;
+    server.send(m);
+    return false;
+  }
+  return true;
+}
+
 void login(message &msg, const string &sender, ServerState &server) {
+  if (!checker(msg, 4, sender, server)) return;
+
   string userName;
   msg >> userName;
   string password;
   msg >> password;
 
   if (server.login(userName, password, sender)) {
-    cout << "User " << userName << " joins the chat server" << endl;
+    message m;
+    cout << "User " << userName << " joins the chat server." << endl;
+    m << sender << "warning" << "Your welcome!" << true;
+    server.send(m);
   } else {
-    cerr << "Wrong user/password" << endl;
+    message m;
+    m << sender << "warning" << "Wrong userName/password." << false;
+    server.send(m);
   }
 }
 
 void newUser(message &msg, const string &sender, ServerState &server) {
+  if (!checker(msg, 4, sender, server)) return;
+
   string userName;
   msg >> userName;
 
@@ -209,7 +278,9 @@ void newUser(message &msg, const string &sender, ServerState &server) {
   server.newUser(userName, password, sender);
 }
 
-void chatTo(message &msg, const string &senderName, ServerState &server) {
+void chatTo(message &msg, const string &sender, const string &senderName, ServerState &server) {
+  if (!checker(msg, 4, sender, server)) return;
+
   string friendName;
   msg >> friendName;
   string textContent = join(msg, 3);
@@ -222,23 +293,35 @@ void chatTo(message &msg, const string &senderName, ServerState &server) {
     m << id << "receive" << senderName << textContent;
     server.send(m);
   } else {
-    cout << "The user " << friendName << " is offline/not exist/not your friend" << endl;
+    if (senderName == friendName) {
+      message m;
+      m << sender << "warning" << "You can not send messages to yourself!" << true;
+      server.send(m);
+    } else {
+      message m;
+      m << sender << "warning" << "The user " + friendName + " is offline/not exist/not your friend." << true;
+      server.send(m);
+    }
   }
 }
 
-void createGroup(message &msg, const string &senderName, ServerState &server) {
+void createGroup(message &msg, const string &sender, const string &senderName, ServerState &server) {
+  if (!checker(msg, 3, sender, server)) return;
+
   string groupName;
   msg >> groupName;
   server.createGroup(groupName, senderName);
 }
 
-void addGroup(message &msg, const string &senderName, ServerState &server) {
+void addGroup(message &msg, const string &sender, const string &senderName, ServerState &server) {
+  if (!checker(msg, 4, sender, server)) return;
+
   string groupName;
   msg >> groupName;
   string friendName;
   msg >> friendName;
 
-  if (server.addGroup(groupName, friendName, senderName)) {
+  if (server.addGroup(groupName, sender, friendName, senderName)) {
     string id = server.chatTo(senderName, friendName);
     if (id.size()) {
       message m;
@@ -251,23 +334,27 @@ void addGroup(message &msg, const string &senderName, ServerState &server) {
 }
 
 void groupChat(message &msg, const string &sender, const string &senderName, ServerState &server) {
+  if (!checker(msg, 4, sender, server)) return;
+
   string groupName;
   msg >> groupName;
   string textContent = join(msg, 3);
   server.groupChat(groupName, sender, senderName, textContent);
 }
 
-void addFriend(message &msg, const string &senderName, ServerState &server) {
+void addFriend(message &msg, const string &sender, const string &senderName, ServerState &server) {
+  if (!checker(msg, 3, sender, server)) return;
+
   string friendName;
   msg >> friendName;
   server.addFriend(senderName, friendName);
 }
 
 void dispatch(message &msg, ServerState &server) {
-  // TODO mandar mensajes de cada accion al cliente
-  assert(msg.parts() > 2);
   string sender;
   msg >> sender;
+
+  if (!checker(msg, 3, sender, server)) return;
 
   string action;
   msg >> action;
@@ -278,17 +365,19 @@ void dispatch(message &msg, ServerState &server) {
   } else if (action == "register") {
     newUser(msg, sender, server);
   } else if (action == "chatTo") {
-    chatTo(msg, senderName, server);
+    chatTo(msg, sender, senderName, server);
   } else if (action == "addFriend") {
-    addFriend(msg, senderName, server);
+    addFriend(msg, sender, senderName, server);
   } else if (action == "createGroup") {
-    createGroup(msg, senderName, server);
+    createGroup(msg, sender, senderName, server);
   } else if (action == "addGroup") {
-    addGroup(msg, senderName, server);
+    addGroup(msg, sender, senderName, server);
   } else if (action == "groupChat") {
     groupChat(msg, sender, senderName, server);
   } else {
-    cerr << "Action not supported/implemented" << endl;
+    message m;
+    m << sender << "warning" << "The action " + action + " is not supported/implemented." << true;
+    server.send(m);
   }
 }
 
@@ -309,6 +398,20 @@ int main(int argc, char *argv[]) {
     s.receive(req);
     dispatch(req, state);
   }
+
+  // Convert uint8 to int16
+  // vector<uint8_t> v;
+  // message rep;
+  // s.receive(rep);
+  // string id;
+  // rep >> id;
+  // rep >> v;
+  //// BIG ENDIAN
+  // for (int i = 0; i < v.size(); i+= 2) {
+  //   int16_t tmp = (v[i] << 8) | v[i + 1];
+  //   cout << tmp << " ";
+  // }
+  // cout << endl;
 
   return EXIT_SUCCESS;
 }

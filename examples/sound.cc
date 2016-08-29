@@ -75,6 +75,7 @@ int main() {
 
   // Play music from an ogg file
   playMusic("ding.flac");
+  playMusic("orchestral.ogg");
 
   // Wait until the user presses 'enter' key
   cout << "Press enter to exit..." << endl;

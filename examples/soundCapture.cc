@@ -36,37 +36,62 @@ void soundCapture() {
   record(recorder, sampleRate);
   const sf::SoundBuffer& buffer = recorder.getBuffer();
 
-  // Choose what to do with the recorded sound data
-  char choice;
-  cout << "What do you want to do with captured sound (p = play, s = save) ?";
-  cin >> choice;
-  cin.ignore(10000, '\n');
+  const int16_t* samples = buffer.getSamples();
+  int sampleCount = buffer.getSampleCount();
+  int channelCount = buffer.getChannelCount();
 
-  if (choice == 's') {
-    // Choose the filename
-    string filename;
-    cout << "Choose the file to create: ";
-    getline(cin, filename);
-
-    // Save the buffer
-    buffer.saveToFile(filename);
-  } else {
-    // Create a sound instance and play it
-    sf::Sound sound(buffer);
-    sound.play();
-
-    // Wait until finished
-    while (sound.getStatus() == sf::Sound::Playing) {
-      // Leave some CPU time for other threads
-      sf::sleep(sf::milliseconds(100));
-
-      // Display the playing position
-      cout << "\rPlaying... " << sound.getPlayingOffset().asSeconds() << " sec        ";
-      cout << flush;
-    }
+  sf::SoundBuffer sb;
+  if(!sb.loadFromSamples(samples, sampleCount, channelCount, sampleRate)) {
+    cout << "Problems playing sound" << endl;
+    return;
   }
-  // finished
-  cout << endl << "Done!" << endl;
+
+  sf::Sound mysound(sb);
+  mysound.play();
+
+  // Loop while the sound is playing
+  while (mysound.getStatus() == sf::Sound::Playing) {
+    // Leave some CPU time for other processes
+    sf::sleep(sf::milliseconds(100));
+
+    // Display the playing position
+    cout << "\rPlaying... " << mysound.getPlayingOffset().asSeconds() << " sec        ";
+    cout << flush;
+  }
+  cout << endl << endl;
+
+
+  // // Choose what to do with the recorded sound data
+  // char choice;
+  // cout << "What do you want to do with captured sound (p = play, s = save) ?";
+  // cin >> choice;
+  // cin.ignore(10000, '\n');
+  //
+  // if (choice == 's') {
+  //   // Choose the filename
+  //   string filename;
+  //   cout << "Choose the file to create: ";
+  //   getline(cin, filename);
+  //
+  //   // Save the buffer
+  //   buffer.saveToFile(filename);
+  // } else {
+  //   // Create a sound instance and play it
+  //   sf::Sound sound(buffer);
+  //   sound.play();
+  //
+  //   // Wait until finished
+  //   while (sound.getStatus() == sf::Sound::Playing) {
+  //     // Leave some CPU time for other threads
+  //     sf::sleep(sf::milliseconds(100));
+  //
+  //     // Display the playing position
+  //     cout << "\rPlaying... " << sound.getPlayingOffset().asSeconds() << " sec        ";
+  //     cout << flush;
+  //   }
+  // }
+  // // finished
+  // cout << endl << "Done!" << endl;
 }
 
 int main() {
