@@ -5,7 +5,7 @@ CC = g++ -std=c++11 -I$(ZMQ)/include -L$(ZMQ)/lib
 all: client server sound soundCapture  # test
 
 client: client.cc
-		$(CC) -o client client.cc -lzmq -lzmqpp
+		$(CC) -o client client.cc -lzmq -lzmqpp -lsfml-system -lsfml-audio
 
 server: server.cc
 		$(CC) -o server server.cc -lzmq -lzmqpp

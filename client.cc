@@ -46,18 +46,18 @@ vector<uint8_t> to_uint8(const int16_t *buffer, int bufferSize) {
 message record() {
   message msg;
   sf::SoundBufferRecorder recorder;
-  // unsigned int sampleRate = 44100;
-  // cout << "Press enter to record";
-  // recorder.start(sampleRate);
-  // cout << "Recording... press enter to stop";
-  // cin.ignore(10000, '\n');
-  // recorder.stop();
-  // const sf::SoundBuffer& buffer = recorder.getBuffer();
-  // const int16_t* samples = buffer.getSamples();
-  // int sampleCount = buffer.getSampleCount();
-  // vector<uint8_t> buffer_msg = to_uint8(samples, sampleCount);
-  // int channelCount = buffer.getChannelCount();
-  // msg << buffer_msg << sampleCount << channelCount << sampleRate;
+  unsigned int sampleRate = 44100;
+  cout << "Press enter to record";
+  recorder.start(sampleRate);
+  cout << "Recording... press enter to stop";
+  cin.ignore(10000, '\n');
+  recorder.stop();
+  const sf::SoundBuffer& buffer = recorder.getBuffer();
+  const int16_t* samples = buffer.getSamples();
+  int sampleCount = buffer.getSampleCount();
+  vector<uint8_t> buffer_msg = to_uint8(samples, sampleCount);
+  int channelCount = buffer.getChannelCount();
+  msg << buffer_msg << sampleCount << channelCount << sampleRate;
   return msg;
 }
 
@@ -72,17 +72,17 @@ bool soundCapture(string &act, socket &s) {
 void play(vector<uint8_t> &samples, int sampleCount, int channelCount, const unsigned int sampleRate) {
   vector<int16_t> samples_int16 = to_int16(samples);
   int16_t *buffer = &samples_int16[0];
-  // sf::SoundBuffer sb;
+  sf::SoundBuffer sb;
 
-  // if(!sb.loadFromSamples(buffer, sampleCount, channelCount, sampleRate)) {
-  //   cout << "Problems playing sound" << endl;
-  //   return;
-  // }
-  //
-  // sf::Sound mysound(sb);
-  // cout << "Press enter to sound";
-  // cin.ignore(10000, '\n');
-  // mysound.play();
+  if(!sb.loadFromSamples(buffer, sampleCount, channelCount, sampleRate)) {
+    cout << "Problems playing sound" << endl;
+    return;
+  }
+
+  sf::Sound mysound(sb);
+  cout << "Press enter to sound";
+  cin.ignore(10000, '\n');
+  mysound.play();
 }
 
 bool attends(message &rep) {
