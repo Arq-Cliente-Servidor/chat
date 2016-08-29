@@ -1,12 +1,19 @@
-#include <SFML/Audio.hpp>
 #include <iostream>
+#include <SFML/Audio.hpp>
 #include <string>
+#include <unistd.h>
 
 using namespace std;
 
-const string path = "/home/sebastian/Escritorio/cliente servidor/chat1.0/examples/resources/";
+string getPath(string ext) {
+  char buff[256];
+  getcwd(buff, 256);
+  string cwd(buff);
+  return cwd + ext;
+}
 
 void playSound() {
+  string path = getPath("/examples/resources/");
   // Load a sound buffer from a wav file
   sf::SoundBuffer buffer;
   if (!buffer.loadFromFile(path + "canary.wav"))
@@ -35,6 +42,7 @@ void playSound() {
 }
 
 void playMusic(const string &filename) {
+  string path = getPath("/examples/resources/");
   // Load an ogg music file
   sf::Music music;
   if (!music.openFromFile(path + filename))
