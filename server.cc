@@ -482,19 +482,5 @@ int main(int argc, char *argv[]) {
     dispatch(req, state);
   }
 
-  // Convert uint8 to int16
-  // vector<uint8_t> v;
-  // message rep;
-  // s.receive(rep);
-  // string id;
-  // rep >> id;
-  // rep >> v;
-  //// BIG ENDIAN
-  // for (int i = 0; i < v.size(); i+= 2) {
-  //   int16_t tmp = (v[i] << 8) | v[i + 1];
-  //   cout << tmp << " ";
-  // }
-  // cout << endl;
-
   return EXIT_SUCCESS;
 }

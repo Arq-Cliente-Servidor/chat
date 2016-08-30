@@ -108,7 +108,7 @@ bool attends(message &rep) {
     rep >> senderName;
     string textContent;
     rep >> textContent;
-    cout << "*" << senderName << " say: " << textContent << endl;
+    cout << "*" << senderName << " says: " << textContent << endl;
   } else if (act == "groupReceive") {
     string groupName;
     rep >> groupName;
@@ -116,7 +116,7 @@ bool attends(message &rep) {
     rep >> senderName;
     string text;
     rep >> text;
-    cout << "[" << groupName << "] " << senderName << " say: " << text << endl;
+    cout << "[" << groupName << "] " << senderName << " says: " << text << endl;
   } else if (act == "recordReceive") {
     string senderName;
     rep >> senderName;
@@ -167,15 +167,6 @@ bool attends(message &rep) {
 }
 
 int main(int argc, char *argv[]) {
-  // int16_t v2[] = {1, 2, 3, 4, 5, 6, 7};
-  // vector<uint8_t> v = to_uint8(v2, 7);
-  // vector<int16_t> cpy = to_int16(v);
-  // int16_t *ans = &cpy[0];
-  // for (int i = 0; i < 7; i++) {
-  //   cout << ans[i] << " ";
-  // }
-  // cout << endl;
-
   if (argc != 5) {
     cerr << "Invalid arguments" << endl;
     return EXIT_FAILURE;
