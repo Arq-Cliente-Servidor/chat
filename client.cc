@@ -27,7 +27,6 @@ vector<int16_t> to_int16(vector<uint8_t> &samples) {
   int j = 0;
   for (int i = 0; i < samples.size(); i += 2) {
     int16_t tmp = (samples[i] << 8) | samples[i + 1];
-    // cout << tmp << " ";
     buffer[j++] = tmp;
   }
   return buffer;
@@ -43,27 +42,32 @@ vector<uint8_t> to_uint8(const int16_t *buffer, int bufferSize) {
   return samples;
 }
 
-message record() {
+message record(const string &act, const string &friendName) {
   message msg;
   sf::SoundBufferRecorder recorder;
   unsigned int sampleRate = 44100;
-  cout << "Press enter to record";
+
+  cout << "Press enter to record" << endl;
+  cin.ignore(10000, '\n');
   recorder.start(sampleRate);
-  cout << "Recording... press enter to stop";
+
+  cout << "Recording... press enter to stop" << endl;
   cin.ignore(10000, '\n');
   recorder.stop();
+
   const sf::SoundBuffer& buffer = recorder.getBuffer();
   const int16_t* samples = buffer.getSamples();
   int sampleCount = buffer.getSampleCount();
   vector<uint8_t> buffer_msg = to_uint8(samples, sampleCount);
   int channelCount = buffer.getChannelCount();
-  msg << buffer_msg << sampleCount << channelCount << sampleRate;
+
+  msg << act << friendName << buffer_msg << sampleCount << channelCount << sampleRate;
   return msg;
 }
 
-bool soundCapture(string &act, socket &s) {
-  if (act == "recordTo") {
-    message msg = record();
+bool soundCapture(vector<string> &tokens, socket &s) {
+  if (tokens.size() > 1 and (tokens[0] == "recordTo" or tokens[0] == "recordGroup")) {
+    message msg = record(tokens[0], tokens[1]);
     s.send(msg);
   }
   return false;
@@ -80,9 +84,19 @@ void play(vector<uint8_t> &samples, int sampleCount, int channelCount, const uns
   }
 
   sf::Sound mysound(sb);
-  cout << "Press enter to sound";
+  cout << "Press enter to play the voice message" << endl;
   cin.ignore(10000, '\n');
+
   mysound.play();
+  while (mysound.getStatus() == sf::Sound::Playing) {
+    // Leave some CPU time for other processes
+    sf::sleep(sf::milliseconds(100));
+
+    // Display the playing position
+    cout << "\rPlaying... " << mysound.getPlayingOffset().asSeconds() << " sec        ";
+    cout << flush;
+  }
+  cout << endl << "End of message" << endl;
 }
 
 bool attends(message &rep) {
@@ -208,7 +222,7 @@ int main(int argc, char *argv[]) {
         string input;
         getline(cin, input);
         vector<string> tokens = tokenize(input);
-        if (!soundCapture(tokens[0], s)) {
+        if (!soundCapture(tokens, s)) {
           message msg;
           for (const auto &str : tokens) {
             msg << str;

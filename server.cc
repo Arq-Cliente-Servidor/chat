@@ -233,6 +233,10 @@ public:
       string friendId = users[friendName].getId();
       msg << friendId << "recordReceive" << senderName << samples << sampleCount << channelCount << sampleRate;
       send(msg);
+
+      message m;
+      m << sender << "warning" << "The voice message has been sent" << true;
+      send(m);
     } else {
       if (senderName == friendName) {
         message m;
@@ -258,6 +262,9 @@ public:
           send(m);
         }
       }
+      message msg;
+      msg << sender << "warning" << "The voice message has been sent" << true;
+      send(msg);
     } else {
       message m;
       m << sender << "warning" << "The group " + groupName + " does not exist/not found." << true;
@@ -391,7 +398,7 @@ void groupChat(message &msg, const string &sender, const string &senderName, Ser
 }
 
 void recordTo(message &msg, const string &sender, const string &senderName, ServerState &server) {
-  if (checker(msg, 7, sender, server)) return;
+  if (msg.parts() < 7 or !checker(msg, 7, sender, server)) return;
 
   string friendName;
   msg >> friendName;
@@ -407,7 +414,7 @@ void recordTo(message &msg, const string &sender, const string &senderName, Serv
 }
 
 void recordGroup(message &msg, const string &sender, const string &senderName, ServerState &server) {
-  if (checker(msg, 7, sender, server)) return;
+  if (msg.parts() < 7 or !checker(msg, 7, sender, server)) return;
 
   string groupName;
   msg >> groupName;
