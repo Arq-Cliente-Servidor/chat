@@ -1,11 +1,13 @@
 // Coded by: Sebastian Duque Restrepo - Carolina Gomez Trejos
 #include <cassert>
+#include <chrono>
 #include <cstdlib>
 #include <iostream>
 #include <sstream>
 #include <string>
 #include <SFML/Audio.hpp>
 #include <vector>
+#include <thread>
 #include <zmqpp/zmqpp.hpp>
 
 #include "Util/Serializer.hpp"
@@ -20,26 +22,6 @@ vector<string> tokenize(string &input) {
   while (ss >> s)
     result.push_back(s);
   return result;
-}
-
-vector<int16_t> to_int16(vector<uint8_t> &samples) {
-  vector<int16_t> buffer(samples.size() / 2);
-  int j = 0;
-  for (int i = 0; i < samples.size(); i += 2) {
-    int16_t tmp = (samples[i] << 8) | samples[i + 1];
-    buffer[j++] = tmp;
-  }
-  return buffer;
-}
-
-vector<uint8_t> to_uint8(const int16_t *buffer, int bufferSize) {
-  vector<uint8_t> samples(bufferSize * 2);
-  int j = 0;
-  for (int i = 0; i < bufferSize; i++) {
-    samples[j++] = (buffer[i] >> 8);
-    samples[j++] = buffer[i];
-  }
-  return samples;
 }
 
 message record(const string &act, const string &friendName) {
@@ -58,11 +40,39 @@ message record(const string &act, const string &friendName) {
   const sf::SoundBuffer& buffer = recorder.getBuffer();
   const int16_t* samples = buffer.getSamples();
   int sampleCount = buffer.getSampleCount();
-  vector<uint8_t> buffer_msg = to_uint8(samples, sampleCount);
+  vector<int16_t> buffer_msg(samples, samples + sampleCount);
   int channelCount = buffer.getChannelCount();
 
   msg << act << friendName << buffer_msg << sampleCount << channelCount << sampleRate;
   return msg;
+}
+
+message recordCall(const string &act, const string &friendName) {
+  message msg;
+  sf::SoundBufferRecorder recorder;
+  unsigned int sampleRate = 44100;
+
+  cout << "Press enter to speak" << endl;
+  cin.ignore(1, '\n');
+  recorder.start(sampleRate);
+  this_thread::sleep_for(chrono::milliseconds(500));
+  recorder.stop();
+
+  const sf::SoundBuffer& buffer = recorder.getBuffer();
+  const int16_t* samples = buffer.getSamples();
+  int sampleCount = buffer.getSampleCount();
+  vector<int16_t> buffer_msg(samples, samples + sampleCount);
+  int channelCount = buffer.getChannelCount();
+
+  msg << act << friendName << buffer_msg << sampleCount << channelCount << sampleRate;
+  return msg;
+}
+
+void recordCallSend(bool &t, const string &act, const string &friendName, socket &s) {
+  while(!t) {
+    message msg = recordCall(act, friendName);
+    s.send(msg);
+  }
 }
 
 bool soundCapture(vector<string> &tokens, socket &s) {
@@ -73,33 +83,27 @@ bool soundCapture(vector<string> &tokens, socket &s) {
   return false;
 }
 
-void play(vector<uint8_t> &samples, int sampleCount, int channelCount, const unsigned int sampleRate) {
-  vector<int16_t> samples_int16 = to_int16(samples);
-  int16_t *buffer = &samples_int16[0];
-  sf::SoundBuffer sb;
+// Recibir sound como parametro por referencia desde el main a play
+void play(sf::Sound &mysound, sf::SoundBuffer &sb, vector<int16_t> &samples, int sampleCount, int channelCount, const unsigned int sampleRate) {
+  int16_t *buffer = &samples[0];
 
   if(!sb.loadFromSamples(buffer, sampleCount, channelCount, sampleRate)) {
     cout << "Problems playing sound" << endl;
     return;
   }
 
-  sf::Sound mysound(sb);
+  mysound.setBuffer(sb);
   cout << "Press enter to play the voice message" << endl;
-  cin.ignore(10000, '\n');
+  cin.ignore(1, '\n');
 
   mysound.play();
-  while (mysound.getStatus() == sf::Sound::Playing) {
-    // Leave some CPU time for other processes
-    sf::sleep(sf::milliseconds(100));
-
-    // Display the playing position
-    cout << "\rPlaying... " << mysound.getPlayingOffset().asSeconds() << " sec        ";
-    cout << flush;
-  }
-  cout << endl << "End of message" << endl;
+  // while (mysound.getStatus() == sf::Sound::Playing) {
+  cout << "Playing..." << endl;
+  // }
+  // cout << endl << "End of message" << endl;
 }
 
-bool attends(message &rep) {
+bool attends(message &rep, sf::Sound &mysound, sf::SoundBuffer &sb) {
   string act;
   rep >> act;
 
@@ -120,7 +124,7 @@ bool attends(message &rep) {
   } else if (act == "recordReceive") {
     string senderName;
     rep >> senderName;
-    vector<uint8_t> samples;
+    vector<int16_t> samples;
     rep >> samples;
     int sampleCount;
     rep >> sampleCount;
@@ -129,13 +133,13 @@ bool attends(message &rep) {
     int sampleRate;
     rep >> sampleRate;
     cout << senderName << " records to you" << endl;
-    play(samples, sampleCount, channelCount, sampleRate);
+    play(mysound, sb, samples, sampleCount, channelCount, sampleRate);
   } else if (act == "recordReceiveGroup") {
     string groupName;
     rep >> groupName;
     string senderName;
     rep >> senderName;
-    vector<uint8_t> samples;
+    vector<int16_t> samples;
     rep >> samples;
     int sampleCount;
     rep >> sampleCount;
@@ -144,7 +148,7 @@ bool attends(message &rep) {
     int sampleRate;
     rep >> sampleRate;
     cout << "[" << groupName << "] " << senderName << " records to you" << endl;
-    play(samples, sampleCount, channelCount, sampleRate);
+    play(mysound, sb, samples, sampleCount, channelCount, sampleRate);
   } else if (act == "addGroup") {
     string text;
     rep >> text;
@@ -179,6 +183,10 @@ int main(int argc, char *argv[]) {
   string sckt("tcp://");
   sckt += address;
 
+  bool t = true;
+  sf::SoundBuffer sb;
+  sf::Sound mysound;
+
   context ctx;
   socket s(ctx, socket_type::xrequest);
 
@@ -205,7 +213,7 @@ int main(int argc, char *argv[]) {
         // Handle input in socket
         message msg;
         s.receive(msg);
-        if (!attends(msg))
+        if (!attends(msg, mysound, sb))
           return EXIT_FAILURE;
       }
       if (poll.has_input(console)) {
@@ -213,6 +221,14 @@ int main(int argc, char *argv[]) {
         string input;
         getline(cin, input);
         vector<string> tokens = tokenize(input);
+        // if (tokens[0] == "callTo" and tokens.size() > 1) {
+        //   t = false;
+        //   thread th(recordCallSend, t, tokens[0], tokens[1], s);
+        //   th.join();
+        // }
+        // if (tokens[0] == "stop") {
+        //   t = true;
+        // }
         if (!soundCapture(tokens, s)) {
           message msg;
           for (const auto &str : tokens) {

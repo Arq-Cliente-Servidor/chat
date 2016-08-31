@@ -222,7 +222,7 @@ public:
     }
   }
 
-  void recordTo(const string &sender, const string &senderName, const string &friendName, vector<uint8_t> &samples,
+  void recordTo(const string &sender, const string &senderName, const string &friendName, vector<int16_t> &samples,
                 const int sampleCount, const int channelCount, const int sampleRate) {
 
     // Extract the id of the user
@@ -250,7 +250,7 @@ public:
     }
   }
 
-  void recordGroup(const string &sender, const string &senderName, const string &groupName, vector<uint8_t> &samples,
+  void recordGroup(const string &sender, const string &senderName, const string &groupName, vector<int16_t> &samples,
                    const int sampleCount, const int channelCount, const int sampleRate) {
 
     if (groups.count(groupName)) {
@@ -402,7 +402,7 @@ void recordTo(message &msg, const string &sender, const string &senderName, Serv
 
   string friendName;
   msg >> friendName;
-  vector<uint8_t> samples;
+  vector<int16_t> samples;
   msg >> samples;
   int sampleCount;
   msg >> sampleCount;
@@ -418,7 +418,7 @@ void recordGroup(message &msg, const string &sender, const string &senderName, S
 
   string groupName;
   msg >> groupName;
-  vector<uint8_t> samples;
+  vector<int16_t> samples;
   msg >> samples;
   int sampleCount;
   msg >> sampleCount;
@@ -457,6 +457,12 @@ void dispatch(message &msg, ServerState &server) {
     recordTo(msg, sender, senderName, server);
   } else if (action == "recordGroup") {
     recordGroup(msg, sender, senderName, server);
+  } else if (action == "callTo") {
+    recordTo(msg, sender, senderName, server);
+  } else if (action == "callGroup") {
+    recordGroup(msg, sender, senderName, server);
+  } else if (action == "accept") {
+    // TODO aceptar llamada
   } else {
     message m;
     m << sender << "warning" << "The action " + action + " is not supported/implemented." << true;

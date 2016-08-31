@@ -2,16 +2,20 @@
 
 #include <zmqpp/zmqpp.hpp>
 
-zmqpp::message& operator << (zmqpp::message &msg, const std::vector<uint8_t> &buffer) {
-  msg.add_raw(reinterpret_cast<const void*>(buffer.data()), buffer.size());
+template <typename T>
+zmqpp::message& operator << (zmqpp::message &msg, const std::vector<T> &buffer) {
+  msg.add_raw(reinterpret_cast<const void*>(buffer.data()), sizeof(T) * buffer.size());
   return msg;
 }
 
-zmqpp::message& operator >> (zmqpp::message &msg, std::vector<uint8_t> &buffer) {
+template <typename T>
+zmqpp::message& operator >> (zmqpp::message &msg, std::vector<T> &buffer) {
   size_t part = msg.read_cursor();
-  const uint8_t* data = static_cast<const uint8_t*>(msg.raw_data(part));
-  size_t len = msg.size(part);
+  const T* data = static_cast<const T*>(msg.raw_data(part));
+  size_t len = msg.size(part);  // Size in bytes
   msg.next();
-  buffer.assign(data, data + len);
+  if ((len % sizeof(T)) == 0) {
+    buffer.assign(data, data + (len / sizeof(T)));
+  }
   return msg;
 }

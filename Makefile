@@ -2,7 +2,7 @@
 ZMQ=/home/utp/zmq
 CC = g++ -std=c++11 -I$(ZMQ)/include -L$(ZMQ)/lib
 
-all: client server sound soundCapture  # test
+all: server client sound soundCapture # test
 
 client: client.cc
 		$(CC) -o client client.cc -lzmq -lzmqpp -lsfml-system -lsfml-audio
@@ -16,5 +16,5 @@ soundCapture: examples/soundCapture.cc
 sound: examples/sound.cc
 		$(CC) -o examples/sound examples/sound.cc -lsfml-system -lsfml-audio
 
-# test: test.cc
-# 	$(CC) -o test test.cc -lzmq -lzmqpp
+test: test.cc
+	$(CC) -o test test.cc -lzmq -lzmqpp
