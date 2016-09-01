@@ -173,7 +173,7 @@ int main(int argc, char *argv[]) {
   bool t = true;
   sf::SoundBuffer sb;
   sf::Sound mysound;
-  thread th;
+  thread *th = nullptr;
 
   context ctx;
   socket s(ctx, socket_type::xrequest);
@@ -211,8 +211,9 @@ int main(int argc, char *argv[]) {
         vector<string> tokens = tokenize(input);
         if (tokens[0] == "callTo" and tokens.size() > 1) {
           t = false;
-          th = thread(recordCallSend, ref(t), ref(tokens[0]), ref(tokens[1]), ref(s));
-          th.join();
+          th = new thread(recordCallSend, ref(t), ref(tokens[0]), ref(tokens[1]), ref(s));
+          th->join();
+          th = nullptr;
         }
         if (!soundCapture(tokens, s)) {
           message msg;
