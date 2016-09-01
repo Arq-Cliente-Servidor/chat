@@ -88,7 +88,7 @@ void play(sf::Sound &mysound, sf::SoundBuffer &sb, vector<int16_t> &samples, int
   // cout << endl << "End of message" << endl;
 }
 
-bool attends(message &rep, sf::Sound &mysound, sf::SoundBuffer &sb, socket &s, thread *&recorder) {
+bool attends(message &rep, sf::Sound &mysound, sf::SoundBuffer &sb, socket &s, thread *&recorder, bool &onPlay) {
   string act;
   rep >> act;
 
@@ -163,6 +163,17 @@ bool attends(message &rep, sf::Sound &mysound, sf::SoundBuffer &sb, socket &s, t
     } else {
       cout << "The call could not be performed" << endl;
     }
+  } else if (act == "stop") {
+    if (!onPlay) {
+      cout << "There is not an active call." << endl;
+    } else {
+      onPlay = false;
+      recorder->join();
+      recorder = nullptr;
+      string friendName;
+      rep >> friendName;
+      cout << "The call with " << friendName << " has finished" << endl;
+    }
   } else if (act == "addGroup") {
     string text;
     rep >> text;
@@ -199,7 +210,7 @@ int main(int argc, char *argv[]) {
   string sckt("tcp://");
   sckt += address;
 
-  bool t = true;
+  bool onPlay = false;
   sf::SoundBuffer sb;
   sf::Sound mysound;
   thread *recorder = nullptr;
@@ -230,7 +241,7 @@ int main(int argc, char *argv[]) {
         // Handle input in socket
         message msg;
         s.receive(msg);
-        if (!attends(msg, mysound, sb, s, recorder))
+        if (!attends(msg, mysound, sb, s, recorder, onPlay))
           return EXIT_FAILURE;
       }
       if (poll.has_input(console)) {
