@@ -24,39 +24,24 @@ vector<string> tokenize(string &input) {
   return result;
 }
 
-message record(const string &act, const string &friendName) {
+message record(const string &act, const string &friendName, bool isRecord = true) {
   message msg;
   sf::SoundBufferRecorder recorder;
   unsigned int sampleRate = 44100;
 
-  cout << "Press enter to record" << endl;
-  cin.ignore(10000, '\n');
-  recorder.start(sampleRate);
+  if (isRecord) {
+    cout << "Press enter to record" << endl;
+    cin.ignore(10000, '\n');
+    recorder.start(sampleRate);
 
-  cout << "Recording... press enter to stop" << endl;
-  cin.ignore(10000, '\n');
-  recorder.stop();
-
-  const sf::SoundBuffer& buffer = recorder.getBuffer();
-  const int16_t* samples = buffer.getSamples();
-  int sampleCount = buffer.getSampleCount();
-  vector<int16_t> buffer_msg(samples, samples + sampleCount);
-  int channelCount = buffer.getChannelCount();
-
-  msg << act << friendName << buffer_msg << sampleCount << channelCount << sampleRate;
-  return msg;
-}
-
-message recordCall(const string &act, const string &friendName) {
-  message msg;
-  sf::SoundBufferRecorder recorder;
-  unsigned int sampleRate = 44100;
-
-  cout << "Press enter to speak" << endl;
-  cin.ignore(1, '\n');
-  recorder.start(sampleRate);
-  this_thread::sleep_for(chrono::milliseconds(500));
-  recorder.stop();
+    cout << "Recording... press enter to stop" << endl;
+    cin.ignore(10000, '\n');
+    recorder.stop();
+  } else {
+    recorder.start(sampleRate);
+    this_thread::sleep_for(chrono::milliseconds(500));
+    recorder.stop();
+  }
 
   const sf::SoundBuffer& buffer = recorder.getBuffer();
   const int16_t* samples = buffer.getSamples();
@@ -70,7 +55,7 @@ message recordCall(const string &act, const string &friendName) {
 
 void recordCallSend(bool &t, const string &act, const string &friendName, socket &s) {
   while(!t) {
-    message msg = recordCall(act, friendName);
+    message msg = record(act, friendName, false);
     s.send(msg);
   }
 }
@@ -93,12 +78,12 @@ void play(sf::Sound &mysound, sf::SoundBuffer &sb, vector<int16_t> &samples, int
   }
 
   mysound.setBuffer(sb);
-  cout << "Press enter to play the voice message" << endl;
-  cin.ignore(1, '\n');
+  // cout << "Press enter to play the voice message" << endl;
+  // cin.ignore(1, '\n');
 
   mysound.play();
   // while (mysound.getStatus() == sf::Sound::Playing) {
-  cout << "Playing..." << endl;
+  // cout << "Playing..." << endl;
   // }
   // cout << endl << "End of message" << endl;
 }
@@ -132,7 +117,7 @@ bool attends(message &rep, sf::Sound &mysound, sf::SoundBuffer &sb) {
     rep >> channelCount;
     int sampleRate;
     rep >> sampleRate;
-    cout << senderName << " records to you" << endl;
+    //cout << senderName << " records to you" << endl;
     play(mysound, sb, samples, sampleCount, channelCount, sampleRate);
   } else if (act == "recordReceiveGroup") {
     string groupName;
@@ -171,6 +156,8 @@ bool attends(message &rep, sf::Sound &mysound, sf::SoundBuffer &sb) {
 }
 
 int main(int argc, char *argv[]) {
+  // TODO evitar logue varias veces una vez que ya esta logueado
+  // reutilizar record
   if (argc != 5) {
     cerr << "Invalid arguments" << endl;
     return EXIT_FAILURE;
@@ -186,6 +173,7 @@ int main(int argc, char *argv[]) {
   bool t = true;
   sf::SoundBuffer sb;
   sf::Sound mysound;
+  thread th;
 
   context ctx;
   socket s(ctx, socket_type::xrequest);
@@ -221,14 +209,11 @@ int main(int argc, char *argv[]) {
         string input;
         getline(cin, input);
         vector<string> tokens = tokenize(input);
-        // if (tokens[0] == "callTo" and tokens.size() > 1) {
-        //   t = false;
-        //   thread th(recordCallSend, t, tokens[0], tokens[1], s);
-        //   th.join();
-        // }
-        // if (tokens[0] == "stop") {
-        //   t = true;
-        // }
+        if (tokens[0] == "callTo" and tokens.size() > 1) {
+          t = false;
+          th = thread(recordCallSend, ref(t), ref(tokens[0]), ref(tokens[1]), ref(s));
+          th.join();
+        }
         if (!soundCapture(tokens, s)) {
           message msg;
           for (const auto &str : tokens) {
