@@ -88,7 +88,7 @@ void play(sf::Sound &mysound, sf::SoundBuffer &sb, vector<int16_t> &samples, int
   // cout << endl << "End of message" << endl;
 }
 
-bool attends(message &rep, sf::Sound &mysound, sf::SoundBuffer &sb) {
+bool attends(message &rep, sf::Sound &mysound, sf::SoundBuffer &sb, socket &s, thread *&recorder) {
   string act;
   rep >> act;
 
@@ -134,6 +134,35 @@ bool attends(message &rep, sf::Sound &mysound, sf::SoundBuffer &sb) {
     rep >> sampleRate;
     cout << "[" << groupName << "] " << senderName << " records to you" << endl;
     play(mysound, sb, samples, sampleCount, channelCount, sampleRate);
+  } else if (act == "callRequest") {
+    string friendName;
+    rep >> friendName;
+    string txt;
+    rep >> txt;
+    cout << friendName << txt << endl;
+    char c;
+    message req;
+
+    while (cin >> c and c != 'y' and c != 'Y' and c != 'N' and c != 'n') {
+      cin.ignore();
+    }
+
+    if (tolower(c) == 'y') {
+      req << "accept" << friendName << true;
+    } else {
+      req << "accept" << friendName << false;
+    }
+    s.send(req);
+  } else if (act == "callResponse") {
+    string txt;
+    rep >> txt;
+    bool callReady;
+    rep >> callReady;
+    if (callReady) {
+
+    } else {
+      cout << "The call could not be performed" << endl;
+    }
   } else if (act == "addGroup") {
     string text;
     rep >> text;
@@ -173,7 +202,7 @@ int main(int argc, char *argv[]) {
   bool t = true;
   sf::SoundBuffer sb;
   sf::Sound mysound;
-  thread *th = nullptr;
+  thread *recorder = nullptr;
 
   context ctx;
   socket s(ctx, socket_type::xrequest);
@@ -201,7 +230,7 @@ int main(int argc, char *argv[]) {
         // Handle input in socket
         message msg;
         s.receive(msg);
-        if (!attends(msg, mysound, sb))
+        if (!attends(msg, mysound, sb, s, recorder))
           return EXIT_FAILURE;
       }
       if (poll.has_input(console)) {
@@ -209,12 +238,13 @@ int main(int argc, char *argv[]) {
         string input;
         getline(cin, input);
         vector<string> tokens = tokenize(input);
-        if (tokens[0] == "callTo" and tokens.size() > 1) {
-          t = false;
-          th = new thread(recordCallSend, ref(t), ref(tokens[0]), ref(tokens[1]), ref(s));
-          th->join();
-          th = nullptr;
-        }
+        // if (tokens[0] == "callTo" and tokens.size() > 1) {
+
+          // t = false;
+          // th = new thread(recordCallSend, ref(t), ref(tokens[0]), ref(tokens[1]), ref(s));
+          // th->join();
+          // th = nullptr;
+        // }
         if (!soundCapture(tokens, s)) {
           message msg;
           for (const auto &str : tokens) {

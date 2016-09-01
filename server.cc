@@ -429,6 +429,34 @@ void recordGroup(message &msg, const string &sender, const string &senderName, S
   server.recordGroup(sender, senderName, groupName, samples, sampleCount, channelCount, sampleRate);
 }
 
+void callRequest(message &msg, const string &senderName, ServerState &server) {
+  string friendName;
+  msg >> friendName;
+  string friendId = server.getUserName(friendName);
+  message m;
+  m << friendId << "callRequest" << senderName << " is calling press (y = accept, n = reject) ";
+  server.send(m);
+}
+
+void acceptCall(message &msg, const string &sender, const string &senderName, ServerState &server) {
+  string friendName;
+  msg >> friendName;
+  bool accept;
+  msg >> accept;
+  message rep, rep2;
+  string friendId = server.getUserName(friendName);
+
+  if (!accept) {
+    rep << friendId << "callResponse" << senderName + " has rejected your call." << false;
+    server.send(rep);
+  } else {
+    rep << friendId << "callResponse" << senderName + " has accepted your call." << true;
+    rep2 << sender << "callResponse" << friendName + " is ready for the call." << true;
+    server.send(rep);
+    server.send(rep2);
+  }
+}
+
 void dispatch(message &msg, ServerState &server) {
   string sender;
   msg >> sender;
@@ -458,11 +486,12 @@ void dispatch(message &msg, ServerState &server) {
   } else if (action == "recordGroup") {
     recordGroup(msg, sender, senderName, server);
   } else if (action == "callTo") {
-    recordTo(msg, sender, senderName, server);
+    callRequest(msg, senderName, server);
+    // recordTo(msg, sender, senderName, server);
   } else if (action == "callGroup") {
     recordGroup(msg, sender, senderName, server);
   } else if (action == "accept") {
-    // TODO aceptar llamada
+    acceptCall(msg, sender, senderName, server);
   } else {
     message m;
     m << sender << "warning" << "The action " + action + " is not supported/implemented." << true;
