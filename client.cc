@@ -201,9 +201,9 @@ bool attends(message &rep, sf::Sound &mysound, sf::SoundBuffer &sb, socket &s,
       cout << "There is not an active call." << endl;
     } else {
       onPlay = false;
-      recorder->join();
-      recorder = nullptr;
-      mysound.stop();
+      // recorder->join();
+      // recorder = nullptr;
+      // mysound.stop();
       string friendName;
       rep >> friendName;
       cout << "The call with " << friendName << " has finished" << endl;
@@ -282,14 +282,15 @@ int main(int argc, char *argv[]) {
       }
       if (poll.has_input(console)) {
         // Handle input from console
+        cout << "hola" << endl;
         string input;
         getline(cin, input);
         vector<string> tokens = tokenize(input);
         if (tokens[0] == "stop") {
           onPlay = false;
-          recorder->join();
-          recorder = nullptr;
-          mysound.stop();
+          // recorder ->join();
+          // recorder = nullptr;
+          // mysound.stop();
         }
         if (!soundCapture(tokens, s)) {
           message msg;
@@ -297,7 +298,7 @@ int main(int argc, char *argv[]) {
             msg << str;
           }
           s.send(msg);
-        }
+        }            
       }
     }
   }
