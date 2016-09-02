@@ -234,9 +234,9 @@ public:
       msg << friendId << "recordReceive" << senderName << samples << sampleCount << channelCount << sampleRate;
       send(msg);
 
-      message m;
-      m << sender << "warning" << "The voice message has been sent" << true;
-      send(m);
+      // message m;
+      // m << sender << "warning" << "The voice message has been sent" << true;
+      // send(m);
     } else {
       if (senderName == friendName) {
         message m;
@@ -441,7 +441,7 @@ void callRequest(message &msg, const string &senderName, ServerState &server) {
 void acceptCall(message &msg, const string &sender, const string &senderName, ServerState &server) {
   string friendName;
   msg >> friendName;
-    bool accept;
+  bool accept;
   msg >> accept;
   message rep, rep2;
   string friendId = server.getId(friendName);

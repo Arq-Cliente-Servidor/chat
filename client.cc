@@ -40,7 +40,7 @@ message record(const string &act, const string &friendName,
     recorder.stop();
   } else {
     recorder.start(sampleRate);
-    this_thread::sleep_for(chrono::milliseconds(1000));
+    this_thread::sleep_for(chrono::milliseconds(500));
     recorder.stop();
   }
 
@@ -202,7 +202,7 @@ bool attends(message &rep, sf::Sound &mysound, sf::SoundBuffer &sb, socket &s,
     } else {
       onPlay = false;
       recorder->join();
-      delete recorder;
+      recorder = nullptr;
       mysound.stop();
       string friendName;
       rep >> friendName;
@@ -288,7 +288,7 @@ int main(int argc, char *argv[]) {
         if (tokens[0] == "stop") {
           onPlay = false;
           recorder->join();
-          delete recorder;
+          recorder = nullptr;
           mysound.stop();
         }
         if (!soundCapture(tokens, s)) {
