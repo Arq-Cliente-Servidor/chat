@@ -88,7 +88,23 @@ void play(sf::Sound &mysound, sf::SoundBuffer &sb, vector<int16_t> &samples, int
   // cout << endl << "End of message" << endl;
 }
 
-bool attends(message &rep, sf::Sound &mysound, sf::SoundBuffer &sb, socket &s, thread *&recorder, bool &onPlay) {
+void playOnthread(message &rep, sf::Sound &mysound, sf::SoundBuffer &sb, bool &onPlay) {
+  while (onPlay) {
+    string senderName;
+    rep >> senderName;
+    vector<int16_t> samples;
+    rep >> samples;
+    int sampleCount;
+    rep >> sampleCount;
+    int channelCount;
+    rep >> channelCount;
+    int sampleRate;
+    rep >> sampleRate;
+    play(mysound, sb, samples, sampleCount, channelCount, sampleRate);
+  }
+}
+
+bool attends(message &rep, sf::Sound &mysound, sf::SoundBuffer &sb, socket &s, thread *recorder, bool &onPlay) {
   string act;
   rep >> act;
 
@@ -165,7 +181,8 @@ bool attends(message &rep, sf::Sound &mysound, sf::SoundBuffer &sb, socket &s, t
     if (callReady) {
       string action = "calling";
       recorder = new thread(recordCallSend, ref(onPlay), ref(action), ref(friendName), ref(s));
-      recorder->join();
+      // player = new thread(playOnthread, ref(mysound), ref(sb), ref(onPlay));
+      // recorder->join();
     } else {
       cout << "The call could not be performed" << endl;
     }
@@ -175,7 +192,8 @@ bool attends(message &rep, sf::Sound &mysound, sf::SoundBuffer &sb, socket &s, t
     } else {
       onPlay = false;
       recorder->join();
-      recorder = nullptr;
+      delete recorder;
+      mysound.stop();
       string friendName;
       rep >> friendName;
       cout << "The call with " << friendName << " has finished" << endl;
@@ -220,6 +238,7 @@ int main(int argc, char *argv[]) {
   sf::SoundBuffer sb;
   sf::Sound mysound;
   thread *recorder = nullptr;
+  // thread *player = nullptr;
 
   context ctx;
   socket s(ctx, socket_type::xrequest);
@@ -255,6 +274,12 @@ int main(int argc, char *argv[]) {
         string input;
         getline(cin, input);
         vector<string> tokens = tokenize(input);
+        if (tokens[0] == "stop") {
+          onPlay = false;
+          recorder->join();
+          delete recorder;
+          mysound.stop();
+        }
         if (!soundCapture(tokens, s)) {
           message msg;
           for (const auto &str : tokens) {
