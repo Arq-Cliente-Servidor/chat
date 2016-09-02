@@ -39,7 +39,7 @@ message record(const string &act, const string &friendName, bool isRecord = true
     recorder.stop();
   } else {
     recorder.start(sampleRate);
-    this_thread::sleep_for(chrono::milliseconds(500));
+    this_thread::sleep_for(chrono::milliseconds(1000));
     recorder.stop();
   }
 
@@ -140,26 +140,32 @@ bool attends(message &rep, sf::Sound &mysound, sf::SoundBuffer &sb, socket &s, t
     string txt;
     rep >> txt;
     cout << friendName << txt << endl;
-    char c;
+    string acc;
     message req;
 
-    while (cin >> c and c != 'y' and c != 'Y' and c != 'N' and c != 'n') {
-      cin.ignore();
+    while (getline(cin, acc) and acc != "y" and acc != "n") {
+      cout << "Please select a valid option" << endl;
     }
 
-    if (tolower(c) == 'y') {
+    if (acc == "y") {
       req << "accept" << friendName << true;
     } else {
       req << "accept" << friendName << false;
     }
     s.send(req);
   } else if (act == "callResponse") {
+    string friendName;
+    rep >> friendName;
     string txt;
     rep >> txt;
     bool callReady;
     rep >> callReady;
-    if (callReady) {
+    cout << friendName << txt << endl;
 
+    if (callReady) {
+      string action = "calling";
+      recorder = new thread(recordCallSend, ref(onPlay), ref(action), ref(friendName), ref(s));
+      recorder->join();
     } else {
       cout << "The call could not be performed" << endl;
     }
@@ -197,7 +203,7 @@ bool attends(message &rep, sf::Sound &mysound, sf::SoundBuffer &sb, socket &s, t
 
 int main(int argc, char *argv[]) {
   // TODO evitar logue varias veces una vez que ya esta logueado
-  // reutilizar record
+  // eliminar amigo, eliminar del grupo, logout
   if (argc != 5) {
     cerr << "Invalid arguments" << endl;
     return EXIT_FAILURE;
@@ -249,13 +255,6 @@ int main(int argc, char *argv[]) {
         string input;
         getline(cin, input);
         vector<string> tokens = tokenize(input);
-        // if (tokens[0] == "callTo" and tokens.size() > 1) {
-
-          // t = false;
-          // th = new thread(recordCallSend, ref(t), ref(tokens[0]), ref(tokens[1]), ref(s));
-          // th->join();
-          // th = nullptr;
-        // }
         if (!soundCapture(tokens, s)) {
           message msg;
           for (const auto &str : tokens) {

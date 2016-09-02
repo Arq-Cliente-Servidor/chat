@@ -432,7 +432,7 @@ void recordGroup(message &msg, const string &sender, const string &senderName, S
 void callRequest(message &msg, const string &senderName, ServerState &server) {
   string friendName;
   msg >> friendName;
-  string friendId = server.getUserName(friendName);
+  string friendId = server.getId(friendName);
   message m;
   m << friendId << "callRequest" << senderName << " is calling press (y = accept, n = reject) ";
   server.send(m);
@@ -444,28 +444,39 @@ void acceptCall(message &msg, const string &sender, const string &senderName, Se
   bool accept;
   msg >> accept;
   message rep, rep2;
-  string friendId = server.getUserName(friendName);
+  string friendId = server.getId(friendName);
 
   if (!accept) {
-    rep << friendId << "callResponse" << senderName + " has rejected your call." << false;
+    rep << friendId << "callResponse" << senderName << " has rejected your call." << false;
     server.send(rep);
   } else {
-    rep << friendId << "callResponse" << senderName + " has accepted your call." << true;
-    rep2 << sender << "callResponse" << friendName + " is ready for the call." << true;
+    rep << friendId << "callResponse" << senderName << " has accepted your call." << true;
+    rep2 << sender << "callResponse" << friendName << " is ready for the call." << true;
     server.send(rep);
     server.send(rep2);
   }
+}
+
+void stopCall(message &msg, const string &sender,const string &senderName, ServerState &server) {
+  string friendName;
+  msg >> friendName;
+  string friendId = server.getId(friendName);
+  message rep;
+  rep << friendId << "stop" << senderName;
+  server.send(rep);
 }
 
 void dispatch(message &msg, ServerState &server) {
   string sender;
   msg >> sender;
 
-  if (!checker(msg, 3, sender, server)) return;
+  if (!checker(msg, 2, sender, server)) return;
 
   string action;
   msg >> action;
   string senderName = server.getUserName(sender);
+
+  if (action != "stop" and !checker(msg, 3, sender, server)) return;
 
   if (action == "login") {
     login(msg, sender, server);
@@ -487,11 +498,14 @@ void dispatch(message &msg, ServerState &server) {
     recordGroup(msg, sender, senderName, server);
   } else if (action == "callTo") {
     callRequest(msg, senderName, server);
-    // recordTo(msg, sender, senderName, server);
+  } else if (action == "calling") {
+    recordTo(msg, sender, senderName, server);
   } else if (action == "callGroup") {
     recordGroup(msg, sender, senderName, server);
   } else if (action == "accept") {
     acceptCall(msg, sender, senderName, server);
+  } else if (action == "stop") {
+    stopCall(msg, sender, senderName, server);
   } else {
     message m;
     m << sender << "warning" << "The action " + action + " is not supported/implemented." << true;

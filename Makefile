@@ -18,3 +18,6 @@ sound: examples/sound.cc
 
 test: test.cc
 	$(CC) -o test test.cc -lzmq -lzmqpp
+
+clean:
+	rm -rf client server test
