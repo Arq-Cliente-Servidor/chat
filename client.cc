@@ -1,13 +1,13 @@
 // Coded by: Sebastian Duque Restrepo - Carolina Gomez Trejos
+#include <SFML/Audio.hpp>
 #include <cassert>
 #include <chrono>
 #include <cstdlib>
 #include <iostream>
 #include <sstream>
 #include <string>
-#include <SFML/Audio.hpp>
-#include <vector>
 #include <thread>
+#include <vector>
 #include <zmqpp/zmqpp.hpp>
 
 #include "Util/Serializer.hpp"
@@ -24,7 +24,8 @@ vector<string> tokenize(string &input) {
   return result;
 }
 
-message record(const string &act, const string &friendName, bool isRecord = true) {
+message record(const string &act, const string &friendName,
+               bool isRecord = true) {
   message msg;
   sf::SoundBufferRecorder recorder;
   unsigned int sampleRate = 44100;
@@ -43,25 +44,29 @@ message record(const string &act, const string &friendName, bool isRecord = true
     recorder.stop();
   }
 
-  const sf::SoundBuffer& buffer = recorder.getBuffer();
-  const int16_t* samples = buffer.getSamples();
+  const sf::SoundBuffer &buffer = recorder.getBuffer();
+  const int16_t *samples = buffer.getSamples();
   int sampleCount = buffer.getSampleCount();
   vector<int16_t> buffer_msg(samples, samples + sampleCount);
   int channelCount = buffer.getChannelCount();
 
-  msg << act << friendName << buffer_msg << sampleCount << channelCount << sampleRate;
+  msg << act << friendName << buffer_msg << sampleCount << channelCount
+      << sampleRate;
   return msg;
 }
 
-void recordCallSend(bool &t, const string &act, const string &friendName, socket &s) {
-  while(!t) {
+void recordCallSend(bool &t, const string act, const string friendName,
+                    socket &s) {
+  cout << "act: " << act << " friend: " << friendName << endl;
+  while (!t) {
     message msg = record(act, friendName, false);
     s.send(msg);
   }
 }
 
 bool soundCapture(vector<string> &tokens, socket &s) {
-  if (tokens.size() > 1 and (tokens[0] == "recordTo" or tokens[0] == "recordGroup")) {
+  if (tokens.size() > 1 and
+      (tokens[0] == "recordTo" or tokens[0] == "recordGroup")) {
     message msg = record(tokens[0], tokens[1]);
     s.send(msg);
   }
@@ -69,10 +74,11 @@ bool soundCapture(vector<string> &tokens, socket &s) {
 }
 
 // Recibir sound como parametro por referencia desde el main a play
-void play(sf::Sound &mysound, sf::SoundBuffer &sb, vector<int16_t> &samples, int sampleCount, int channelCount, const unsigned int sampleRate) {
+void play(sf::Sound &mysound, sf::SoundBuffer &sb, vector<int16_t> &samples,
+          int sampleCount, int channelCount, const unsigned int sampleRate) {
   int16_t *buffer = &samples[0];
 
-  if(!sb.loadFromSamples(buffer, sampleCount, channelCount, sampleRate)) {
+  if (!sb.loadFromSamples(buffer, sampleCount, channelCount, sampleRate)) {
     cout << "Problems playing sound" << endl;
     return;
   }
@@ -88,7 +94,8 @@ void play(sf::Sound &mysound, sf::SoundBuffer &sb, vector<int16_t> &samples, int
   // cout << endl << "End of message" << endl;
 }
 
-void playOnthread(message &rep, sf::Sound &mysound, sf::SoundBuffer &sb, bool &onPlay) {
+void playOnthread(message &rep, sf::Sound &mysound, sf::SoundBuffer &sb,
+                  bool &onPlay) {
   while (onPlay) {
     string senderName;
     rep >> senderName;
@@ -104,7 +111,8 @@ void playOnthread(message &rep, sf::Sound &mysound, sf::SoundBuffer &sb, bool &o
   }
 }
 
-bool attends(message &rep, sf::Sound &mysound, sf::SoundBuffer &sb, socket &s, thread *recorder, bool &onPlay) {
+bool attends(message &rep, sf::Sound &mysound, sf::SoundBuffer &sb, socket &s,
+             thread *recorder, bool &onPlay) {
   string act;
   rep >> act;
 
@@ -133,7 +141,7 @@ bool attends(message &rep, sf::Sound &mysound, sf::SoundBuffer &sb, socket &s, t
     rep >> channelCount;
     int sampleRate;
     rep >> sampleRate;
-    //cout << senderName << " records to you" << endl;
+    // cout << senderName << " records to you" << endl;
     play(mysound, sb, samples, sampleCount, channelCount, sampleRate);
   } else if (act == "recordReceiveGroup") {
     string groupName;
@@ -156,7 +164,7 @@ bool attends(message &rep, sf::Sound &mysound, sf::SoundBuffer &sb, socket &s, t
     string txt;
     rep >> txt;
     cout << friendName << txt << endl;
-    string acc = "y";
+    string acc;
     message req;
 
     while (getline(cin, acc) and acc != "y" and acc != "n") {
@@ -181,7 +189,8 @@ bool attends(message &rep, sf::Sound &mysound, sf::SoundBuffer &sb, socket &s, t
     if (callReady) {
       string action = "calling";
       cout << "calling to " << friendName << endl;
-      // recorder = new thread(recordCallSend, ref(onPlay), ref(action), ref(friendName), ref(s));
+      recorder =
+          new thread(recordCallSend, ref(onPlay), action, friendName, ref(s));
       // player = new thread(playOnthread, ref(mysound), ref(sb), ref(onPlay));
       // recorder->join();
     } else {
@@ -245,7 +254,8 @@ int main(int argc, char *argv[]) {
   socket s(ctx, socket_type::xrequest);
 
   if (action != "login" and action != "register") {
-    cerr << "invalid operation, usage: <address> <action> <username> <password>" << endl;
+    cerr << "invalid operation, usage: <address> <action> <username> <password>"
+         << endl;
     return EXIT_FAILURE;
   }
 
