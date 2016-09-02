@@ -112,7 +112,7 @@ void playOnthread(message &rep, sf::Sound &mysound, sf::SoundBuffer &sb,
 }
 
 bool attends(message &rep, sf::Sound &mysound, sf::SoundBuffer &sb, socket &s,
-             thread *recorder, bool &onPlay) {
+             thread *recorder, bool &onPlay, string &name) {
   string act;
   rep >> act;
 
@@ -172,6 +172,7 @@ bool attends(message &rep, sf::Sound &mysound, sf::SoundBuffer &sb, socket &s,
     }
 
     if (acc == "y") {
+      name = friendName;
       req << "accept" << friendName << true;
     } else {
       req << "accept" << friendName << false;
@@ -248,6 +249,7 @@ int main(int argc, char *argv[]) {
   sf::SoundBuffer sb;
   sf::Sound mysound;
   thread *recorder = nullptr;
+  string friendName;
   // thread *player = nullptr;
 
   context ctx;
@@ -277,7 +279,7 @@ int main(int argc, char *argv[]) {
         // Handle input in socket
         message msg;
         s.receive(msg);
-        if (!attends(msg, mysound, sb, s, recorder, onPlay))
+        if (!attends(msg, mysound, sb, s, recorder, onPlay, friendName))
           return EXIT_FAILURE;
       }
       if (poll.has_input(console)) {
@@ -288,17 +290,20 @@ int main(int argc, char *argv[]) {
         vector<string> tokens = tokenize(input);
         if (tokens[0] == "stop") {
           onPlay = false;
+          message m;
+          m << "stop" << friendName;
+          s.send(m);
           // recorder ->join();
           // recorder = nullptr;
           // mysound.stop();
         }
-        if (!soundCapture(tokens, s)) {
+        else if (!soundCapture(tokens, s)) {
           message msg;
           for (const auto &str : tokens) {
             msg << str;
           }
           s.send(msg);
-        }            
+        }
       }
     }
   }

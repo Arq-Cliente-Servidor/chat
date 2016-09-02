@@ -507,8 +507,8 @@ void dispatch(message &msg, ServerState &server) {
   } else if (action == "accept") {
     acceptCall(msg, sender, senderName, server);
   } else if (action == "stop") {
-    assert(msg.parts() > 2);
-    cout << "entro"<< endl;
+    // assert(msg.parts() > 2);
+    // cout << "entro"<< endl;
     stopCall(msg, sender, senderName, server);
   } else {
     message m;
