@@ -156,7 +156,7 @@ bool attends(message &rep, sf::Sound &mysound, sf::SoundBuffer &sb, socket &s, t
     string txt;
     rep >> txt;
     cout << friendName << txt << endl;
-    string acc;
+    string acc = "y";
     message req;
 
     while (getline(cin, acc) and acc != "y" and acc != "n") {
@@ -180,7 +180,8 @@ bool attends(message &rep, sf::Sound &mysound, sf::SoundBuffer &sb, socket &s, t
 
     if (callReady) {
       string action = "calling";
-      recorder = new thread(recordCallSend, ref(onPlay), ref(action), ref(friendName), ref(s));
+      cout << "calling to " << friendName << endl;
+      // recorder = new thread(recordCallSend, ref(onPlay), ref(action), ref(friendName), ref(s));
       // player = new thread(playOnthread, ref(mysound), ref(sb), ref(onPlay));
       // recorder->join();
     } else {

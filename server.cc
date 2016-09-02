@@ -441,7 +441,7 @@ void callRequest(message &msg, const string &senderName, ServerState &server) {
 void acceptCall(message &msg, const string &sender, const string &senderName, ServerState &server) {
   string friendName;
   msg >> friendName;
-  bool accept;
+    bool accept;
   msg >> accept;
   message rep, rep2;
   string friendId = server.getId(friendName);
@@ -451,8 +451,10 @@ void acceptCall(message &msg, const string &sender, const string &senderName, Se
     server.send(rep);
   } else {
     rep << friendId << "callResponse" << senderName << " has accepted your call." << true;
-    rep2 << sender << "callResponse" << friendName << " is ready for the call." << true;
+    cout << "To: " << senderName << endl;
     server.send(rep);
+    cout << "From: " << friendName << endl;
+    rep2 << sender << "callResponse" << friendName << " is ready for the call." << true;
     server.send(rep2);
   }
 }
