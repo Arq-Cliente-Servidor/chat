@@ -36,6 +36,11 @@ public:
     netId = id;
   }
 
+  void disconnect(const string &id) {
+    connected = false;
+    netId = "";
+  }
+
   bool isConnected() const { return connected; }
 
   bool isFriend(const string &user) {
@@ -79,6 +84,10 @@ public:
       return user.first;
     }
     return "";
+  }
+
+  void disconnect(const string &id, const string &name) {
+    users[name].disconnect(id);
   }
 
   void newUser(const string &name, const string &pwd, const string &id) {
@@ -325,6 +334,13 @@ void login(message &msg, const string &sender, ServerState &server) {
   }
 }
 
+void logout(const string &sender, const string &senderName, ServerState &server) {
+  message msg;
+  server.disconnect(sender, senderName);
+  msg << sender << "warning" << "Good bye! " + senderName + " :D" << false;
+  server.send(msg);
+}
+
 void addFriend(message &msg, const string &sender, const string &senderName, ServerState &server) {
   if (!checker(msg, 3, sender, server)) return;
 
@@ -451,9 +467,7 @@ void acceptCall(message &msg, const string &sender, const string &senderName, Se
     server.send(rep);
   } else {
     rep << friendId << "callResponse" << senderName << " has accepted your call." << true;
-    cout << "To: " << senderName << endl;
     server.send(rep);
-    cout << "From: " << friendName << endl;
     rep2 << sender << "callResponse" << friendName << " is ready for the call." << true;
     server.send(rep2);
   }
@@ -478,10 +492,13 @@ void dispatch(message &msg, ServerState &server) {
   msg >> action;
   string senderName = server.getUserName(sender);
 
-  if (action != "stop" and !checker(msg, 3, sender, server)) return;
+  if (action != "stop" and action != "logout" and !checker(msg, 3, sender, server)) return;
 
   if (action == "login") {
     login(msg, sender, server);
+  } else if (action == "logout") {
+    cout << "PARTS: " << msg.parts() << endl;
+    logout(sender, senderName, server);
   } else if (action == "register") {
     newUser(msg, sender, server);
   } else if (action == "chatTo") {
@@ -507,8 +524,6 @@ void dispatch(message &msg, ServerState &server) {
   } else if (action == "accept") {
     acceptCall(msg, sender, senderName, server);
   } else if (action == "stop") {
-    // assert(msg.parts() > 2);
-    // cout << "entro"<< endl;
     stopCall(msg, sender, senderName, server);
   } else {
     message m;

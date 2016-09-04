@@ -55,10 +55,9 @@ message record(const string &act, const string &friendName,
   return msg;
 }
 
-void recordCallSend(bool &t, const string act, const string friendName,
+void recordCallSend(bool &onPlay, const string act, const string friendName,
                     socket &s) {
-  cout << "act: " << act << " friend: " << friendName << endl;
-  while (!t) {
+  while (onPlay) {
     message msg = record(act, friendName, false);
     s.send(msg);
   }
@@ -141,7 +140,6 @@ bool attends(message &rep, sf::Sound &mysound, sf::SoundBuffer &sb, socket &s,
     rep >> channelCount;
     int sampleRate;
     rep >> sampleRate;
-    // cout << senderName << " records to you" << endl;
     play(mysound, sb, samples, sampleCount, channelCount, sampleRate);
   } else if (act == "recordReceiveGroup") {
     string groupName;
@@ -172,7 +170,6 @@ bool attends(message &rep, sf::Sound &mysound, sf::SoundBuffer &sb, socket &s,
     }
 
     if (acc == "y") {
-      name = friendName;
       req << "accept" << friendName << true;
     } else {
       req << "accept" << friendName << false;
@@ -186,14 +183,15 @@ bool attends(message &rep, sf::Sound &mysound, sf::SoundBuffer &sb, socket &s,
     bool callReady;
     rep >> callReady;
     cout << friendName << txt << endl;
+    name = friendName;
+    cout << "name: " << name << endl;
 
     if (callReady) {
+      onPlay = true;
       string action = "calling";
       cout << "calling to " << friendName << endl;
-      recorder =
-          new thread(recordCallSend, ref(onPlay), action, friendName, ref(s));
-      // player = new thread(playOnthread, ref(mysound), ref(sb), ref(onPlay));
-      // recorder->join();
+      recorder = new thread(recordCallSend, ref(onPlay), action, friendName, ref(s));
+
     } else {
       cout << "The call could not be performed" << endl;
     }
@@ -202,9 +200,6 @@ bool attends(message &rep, sf::Sound &mysound, sf::SoundBuffer &sb, socket &s,
       cout << "There is not an active call." << endl;
     } else {
       onPlay = false;
-      // recorder->join();
-      // recorder = nullptr;
-      // mysound.stop();
       string friendName;
       rep >> friendName;
       cout << "The call with " << friendName << " has finished" << endl;
@@ -250,7 +245,6 @@ int main(int argc, char *argv[]) {
   sf::Sound mysound;
   thread *recorder = nullptr;
   string friendName;
-  // thread *player = nullptr;
 
   context ctx;
   socket s(ctx, socket_type::xrequest);
@@ -279,12 +273,10 @@ int main(int argc, char *argv[]) {
         // Handle input in socket
         message msg;
         s.receive(msg);
-        if (!attends(msg, mysound, sb, s, recorder, onPlay, friendName))
-          return EXIT_FAILURE;
+        if (!attends(msg, mysound, sb, s, recorder, onPlay, friendName)) break;
       }
       if (poll.has_input(console)) {
         // Handle input from console
-        cout << "hola" << endl;
         string input;
         getline(cin, input);
         vector<string> tokens = tokenize(input);
@@ -292,10 +284,8 @@ int main(int argc, char *argv[]) {
           onPlay = false;
           message m;
           m << "stop" << friendName;
+          cout << "The call with " << friendName << " has finished" << endl;
           s.send(m);
-          // recorder ->join();
-          // recorder = nullptr;
-          // mysound.stop();
         }
         else if (!soundCapture(tokens, s)) {
           message msg;
@@ -308,5 +298,6 @@ int main(int argc, char *argv[]) {
     }
   }
 
+  if (recorder != nullptr) recorder->join();
   return EXIT_SUCCESS;
 }
