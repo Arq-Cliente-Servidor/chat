@@ -306,7 +306,7 @@ public:
         if (id.size()) {
           message rep;
           rep << id << "callResponseGroup" << groupName;
-          server.send(rep);
+          send(rep);
         }
       }
     } else {
