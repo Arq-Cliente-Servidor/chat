@@ -284,18 +284,33 @@ public:
         string id = getId(user);
         if (id.size() and id != sender) {
           message m;
-          string act = (isCall) ? "callReceive" : "recordReceiveGroup";
-          m << id << act << groupName << senderName << samples << sampleCount << channelCount << sampleRate;
-          send(m);
+          if (isCall) {
+            m << id << "callGroupReceive" << senderName << samples << sampleCount << channelCount << sampleRate;
+            send(m);
+            message m2;
+            m2 << id << "callGroup" << groupName;
+            send(m2);
+          } else {
+            m << id << "recordReceiveGroup" << groupName << senderName << samples << sampleCount << channelCount << sampleRate;
+            send(m);
+          }
         }
       }
-      message msg;
-      msg << sender << "warning" << "The voice message has been sent" << true;
-      send(msg);
     } else {
       message m;
       m << sender << "warning" << "The group " + groupName + " does not exist/not found." << true;
       send(m);
+    }
+  }
+
+  void stopCallGroup(const string &sender, const string &senderName, const string &groupName) {
+    for (const auto &user : groups[groupName]) {
+      string id = getId(user);
+      if (id.size() and id != sender) {
+        message m;
+        m << id << "stopGroup" << groupName;
+        send(m);
+      }
     }
   }
 };

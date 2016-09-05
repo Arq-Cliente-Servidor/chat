@@ -2,7 +2,6 @@
 #include <cassert>
 #include <iostream>
 #include <string>
-#include <unordered_map>
 #include <vector>
 #include <zmqpp/zmqpp.hpp>
 
@@ -197,6 +196,7 @@ void callRequest(message &msg, const string &sender, const string &senderName, S
 }
 
 void acceptCall(message &msg, const string &sender, const string &senderName, ServerState &server) {
+  // cout << "PARTS: " << msg.parts() << endl;
   string friendName;
   msg >> friendName;
   bool accept;
@@ -222,6 +222,12 @@ void stopCall(message &msg, const string &sender, const string &senderName, Serv
   message rep;
   rep << friendId << "stop" << senderName;
   server.send(rep);
+}
+
+void stopCallGroup(message &msg, const string &sender, const string &senderName, ServerState &server) {
+  string groupName;
+  msg >> groupName;
+  server.stopCallGroup(sender, senderName, groupName);
 }
 
 void removeFriend(message &msg, const string &sender, const string &senderName, ServerState &server) {
@@ -300,6 +306,8 @@ void dispatch(message &msg, ServerState &server) {
     acceptCall(msg, sender, senderName, server);
   } else if (action == "stop") {
     stopCall(msg, sender, senderName, server);
+  } else if (action == "stopGroup") {
+    stopCallGroup(msg, sender, senderName, server);
   } else if (action == "removeFriend") {
     removeFriend(msg, sender, senderName, server);
   } else if (action == "leaveGroup") {

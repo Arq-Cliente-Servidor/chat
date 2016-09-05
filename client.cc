@@ -23,7 +23,7 @@ vector<string> tokenize(string &input) {
   return result;
 }
 
-message record(const string &act, const string &friendName, bool isRecord = true) {
+message record(const string &act, const string &friendName, bool isRecord = true, int tm = 500) {
   message msg;
   sf::SoundBufferRecorder recorder;
   unsigned int sampleRate = 44100;
@@ -39,7 +39,7 @@ message record(const string &act, const string &friendName, bool isRecord = true
     cout << "The voice message has been sent" << endl;
   } else {
     recorder.start(sampleRate);
-    this_thread::sleep_for(chrono::milliseconds(500));
+    this_thread::sleep_for(chrono::milliseconds(tm));
     recorder.stop();
   }
 
@@ -55,15 +55,37 @@ message record(const string &act, const string &friendName, bool isRecord = true
 
 void recordCallSend(bool &onPlay, const string act, const string friendName, socket &s) {
   while (onPlay) {
-    message msg = record(act, friendName, false);
+   message msg = record(act, friendName, false);
+   s.send(msg);
+  }
+}
+
+void recordCallGroupSend(bool &onPlayGroup, const string act, const string groupName, socket &s) {
+  while (onPlayGroup) {
+    message msg = record(act, groupName, false, 2000);
     s.send(msg);
   }
 }
 
-bool soundCapture(vector<string> &tokens, socket &s) {
-  if (tokens.size() > 1 and (tokens[0] == "recordTo" or tokens[0] == "recordGroup")) {
-    message msg = record(tokens[0], tokens[1]);
-    s.send(msg);
+bool soundCapture(vector<string> &tokens, socket &s, thread *recorder,
+                  bool &onPlay, bool &onPlayGroup, string &groupName) {
+
+  if (tokens.size() > 1) {
+    if (tokens[0] == "recordTo" or tokens[0] == "recordGroup") {
+      message msg = record(tokens[0], tokens[1]);
+      s.send(msg);
+      return true;
+    } else if (tokens[0] == "callGroup") {
+      if (onPlayGroup or onPlay) {
+        cout << "You are already in a call" << endl;
+      } else {
+        onPlayGroup = true;
+        groupName = tokens[1];
+        recorder = new thread(recordCallGroupSend, ref(onPlayGroup), tokens[0], tokens[1], ref(s));
+        cout << "calling in the group " + groupName + "..." << endl;
+      }
+      return true;
+    } else return false;
   }
   return false;
 }
@@ -181,7 +203,6 @@ void callResponse(message &rep, string &name, bool &onPlay, thread *recorder, so
     string action = "calling";
     cout << "calling to " << friendName << endl;
     recorder = new thread(recordCallSend, ref(onPlay), action, friendName, ref(s));
-
   } else {
     cout << "The call could not be performed" << endl;
   }
@@ -189,12 +210,23 @@ void callResponse(message &rep, string &name, bool &onPlay, thread *recorder, so
 
 void stop(message &rep, bool &onPlay) {
   if (!onPlay) {
-    cout << "There is not an active call." << endl;
+    cout << "There is not an active call one by one." << endl;
   } else {
     onPlay = false;
     string friendName;
     rep >> friendName;
     cout << "The call with " << friendName << " has finished" << endl;
+  }
+}
+
+void stopGroup(message &rep, bool &onPlayGroup) {
+  if (!onPlayGroup) {
+    cout << "There is not an active group call." << endl;
+  } else {
+    onPlayGroup = false;
+    string groupName;
+    rep >> groupName;
+    cout << "The call in the group " << groupName << " has finished" << endl;
   }
 }
 
@@ -221,14 +253,29 @@ bool warning(message &rep) {
   return ok;
 }
 
+void callGroup(message &rep, sf::Sound &mysound, sf::SoundBuffer &sb,
+               thread *recorder, socket &s, bool &onPlay, bool &onPlayGroup) {
+
+  if (!onPlay and !onPlayGroup) {
+    onPlayGroup = true;
+    string groupName;
+    rep >> groupName;
+    recorder = new thread(recordCallGroupSend, ref(onPlayGroup), "callGroup", groupName, ref(s));
+  }
+}
+
 bool attends(message &rep, sf::Sound &mysound, sf::SoundBuffer &sb, socket &s,
-             thread *recorder, bool &onPlay, string &name) {
+             thread *recorder, bool &onPlay, bool &onPlayGroup, string &name) {
   string act;
   rep >> act;
 
   if (act == "receive") {
     receive(rep);
   } else if (act == "callReceive") {
+    recordReceive(rep, mysound, sb, true);
+  } else if (act == "callGroup") {
+    callGroup(rep, mysound, sb, recorder, s, onPlayGroup, onPlay);
+  } else if (act == "callGroupReceive") {
     recordReceive(rep, mysound, sb, true);
   } else if (act == "groupReceive") {
     groupReceive(rep);
@@ -242,6 +289,8 @@ bool attends(message &rep, sf::Sound &mysound, sf::SoundBuffer &sb, socket &s,
     callResponse(rep, name, onPlay, recorder, s);
   } else if (act == "stop") {
     stop(rep, onPlay);
+  } else if (act == "stopGroup") {
+    stopGroup(rep, onPlayGroup);
   } else if (act == "addGroup") {
     addGroup(rep);
   } else if (act == "addFriend") {
@@ -253,7 +302,7 @@ bool attends(message &rep, sf::Sound &mysound, sf::SoundBuffer &sb, socket &s,
 }
 
 int main(int argc, char *argv[]) {
-  // TODO llamada grupal
+  // TODO cualquier integrante del chat grupal puede terminar la llamada(?)
 
   if (argc != 5) {
     cerr << "Invalid arguments" << endl;
@@ -268,10 +317,12 @@ int main(int argc, char *argv[]) {
   sckt += address;
 
   bool onPlay = false;
+  bool onPlayGroup = false;
   sf::SoundBuffer sb;
   sf::Sound mysound;
   thread *recorder = nullptr;
   string friendName;
+  string groupName;
 
   context ctx;
   socket s(ctx, socket_type::xrequest);
@@ -299,7 +350,7 @@ int main(int argc, char *argv[]) {
         // Handle input in socket
         message msg;
         s.receive(msg);
-        if (!attends(msg, mysound, sb, s, recorder, onPlay, friendName))
+        if (!attends(msg, mysound, sb, s, recorder, onPlay, onPlayGroup, friendName))
           break;
       }
       if (poll.has_input(console)) {
@@ -308,14 +359,28 @@ int main(int argc, char *argv[]) {
         getline(cin, input);
         vector<string> tokens = tokenize(input);
         if (tokens[0] == "stop") {
-          onPlay = false;
-          message m;
-          m << "stop" << friendName;
-          cout << "The call with " << friendName << " has finished" << endl;
-          s.send(m);
+          if (!onPlay) {
+            cout << "You are not in a call one by one" << endl;
+          } else {
+            onPlay = false;
+            message m;
+            m << "stop" << friendName;
+            cout << "The call with " << friendName << " has finished" << endl;
+            s.send(m);
+          }
+        } else if (tokens[0] == "stopGroup") {
+          if (!onPlayGroup) {
+            cout << "You are not in a group call" << endl;
+          } else {
+            onPlayGroup = false;
+            message m;
+            m << "stopGroup" << groupName;
+            cout << "The call in the group " << groupName << " has finished" << endl;
+            s.send(m);
+          }
         } else if (tokens[0] == "login") {
           cout << "You had already logged!" << endl;
-        } else if (!soundCapture(tokens, s)) {
+        } else if (!soundCapture(tokens, s, recorder, onPlay, onPlayGroup, groupName)) {
           message msg;
           for (const auto &str : tokens) {
             msg << str;
