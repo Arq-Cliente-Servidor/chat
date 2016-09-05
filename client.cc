@@ -67,8 +67,7 @@ void recordCallGroupSend(bool &onPlayGroup, const string act, const string group
   }
 }
 
-bool soundCapture(vector<string> &tokens, socket &s, thread *recorder,
-                  bool &onPlay, string &groupName) {
+bool soundCapture(vector<string> &tokens, socket &s, thread *recorder, bool &onPlay) {
 
   if (tokens.size() > 1) {
     if (tokens[0] == "recordTo" or tokens[0] == "recordGroup") {
@@ -167,9 +166,10 @@ void messageGroupPlay(sf::Sound &mysound, sf::SoundBuffer &sb, vector<int16_t> &
   mysound.play();
 }
 
-void messageGroup(message &rep, unordered_map<string, pair<sf::Sound, sf::SoundBuffer>> &sounds) {
+void messageGroup(message &rep, unordered_map<string, pair<sf::Sound, sf::SoundBuffer>> &sounds, string &gr) {
   string groupName;
   rep >> groupName;
+  gr = groupName;
   string senderName;
   rep >> senderName;
   vector<int16_t> samples;
@@ -278,20 +278,23 @@ bool warning(message &rep) {
 }
 
 void callGroup(message &rep, sf::Sound &mysound, sf::SoundBuffer &sb,
-               thread *recorder, socket &s, bool &onPlay, bool &onPlayGroup, bool &out) {
+               thread *recorder, socket &s, bool &onPlay, bool &onPlayGroup,
+               bool &out, string &gName) {
 
   if (!onPlay and !onPlayGroup) {
     onPlayGroup = true;
     out = false;
     string groupName;
     rep >> groupName;
+    gName = groupName;
     recorder = new thread(recordCallGroupSend, ref(onPlayGroup), "callGroup", groupName, ref(s));
   }
 }
 
 bool attends(message &rep, sf::Sound &mysound, sf::SoundBuffer &sb, socket &s,
              thread *recorder, bool &onPlay, bool &onPlayGroup, string &name,
-             unordered_map<string, pair<sf::Sound, sf::SoundBuffer>> &sounds, bool &out) {
+             unordered_map<string, pair<sf::Sound, sf::SoundBuffer>> &sounds,
+             bool &out, string &groupName) {
   string act;
   rep >> act;
 
@@ -300,9 +303,9 @@ bool attends(message &rep, sf::Sound &mysound, sf::SoundBuffer &sb, socket &s,
   } else if (act == "callReceive") {
     recordReceive(rep, mysound, sb, true);
   } else if (act == "callGroup") {
-    callGroup(rep, mysound, sb, recorder, s, onPlayGroup, onPlay, out);
+    callGroup(rep, mysound, sb, recorder, s, onPlayGroup, onPlay, out, groupName);
   } else if (act == "callGroupReceive") {
-    messageGroup(rep, sounds);
+    messageGroup(rep, sounds, groupName);
   } else if (act == "groupReceive") {
     groupReceive(rep);
   } else if (act == "recordReceive") {
@@ -379,7 +382,7 @@ int main(int argc, char *argv[]) {
         // Handle input in socket
         message msg;
         s.receive(msg);
-        if (!attends(msg, mysound, sb, s, recorder, onPlay, onPlayGroup, friendName, sounds, out))
+        if (!attends(msg, mysound, sb, s, recorder, onPlay, onPlayGroup, friendName, sounds, out, groupName))
           break;
       }
       if (poll.has_input(console)) {
@@ -410,7 +413,7 @@ int main(int argc, char *argv[]) {
           cout << "You had already logged!" << endl;
         } else if (tokens[0] == "register") {
           cout << "You was already registered!" << endl;
-        } else if (!soundCapture(tokens, s, recorder, onPlay, groupName)) {
+        } else if (!soundCapture(tokens, s, recorder, onPlay)) {
           message msg;
           for (const auto &str : tokens) {
             msg << str;
