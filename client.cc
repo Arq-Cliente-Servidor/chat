@@ -135,7 +135,7 @@ void groupReceive(message &rep) {
   cout << "[" << groupName << "] " << senderName << " says: " << text << endl;
 }
 
-void recordReceiveGroup(message &rep, sf::Sound &mysound, sf::SoundBuffer &sb) {
+void recordReceiveGroup(message &rep, sf::Sound &mysound, sf::SoundBuffer &sb, bool isCall = false) {
   string groupName;
   rep >> groupName;
   string senderName;
@@ -148,7 +148,8 @@ void recordReceiveGroup(message &rep, sf::Sound &mysound, sf::SoundBuffer &sb) {
   rep >> channelCount;
   int sampleRate;
   rep >> sampleRate;
-  cout << "[" << groupName << "] " << senderName << " records to you" << endl;
+  if (!isCall)
+    cout << "[" << groupName << "] " << senderName << " records to you" << endl;
   play(mysound, sb, samples, sampleCount, channelCount, sampleRate);
 }
 
@@ -279,7 +280,7 @@ bool attends(message &rep, sf::Sound &mysound, sf::SoundBuffer &sb, socket &s,
   } else if (act == "callGroup") {
     callGroup(rep, mysound, sb, recorder, s, onPlayGroup, onPlay);
   } else if (act == "callGroupReceive") {
-    recordReceive(rep, mysound, sb, true);
+    recordReceiveGroup(rep, mysound, sb, true);
   } else if (act == "groupReceive") {
     groupReceive(rep);
   } else if (act == "recordReceive") {
