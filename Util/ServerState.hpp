@@ -337,4 +337,10 @@ public:
     m << id << "warning" << listGroups << true;
     send(m);
   }
+
+  void stopGroup(const string &sender, const string &senderName) {
+    message m;
+    m << "endCall" << true;
+    send(m);
+  }
 };

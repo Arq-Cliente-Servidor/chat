@@ -291,6 +291,16 @@ void callGroup(message &rep, sf::Sound &mysound, sf::SoundBuffer &sb,
   }
 }
 
+void endCall(message &rep, bool &onPlayGroup, string &groupName, bool &out) {
+  bool ok;
+  rep >> ok;
+  if (ok) {
+    onPlayGroup = false;
+    out = true;
+    cout << "The call in the group " << groupName << " has finished" << endl;
+  }
+}
+
 bool attends(message &rep, sf::Sound &mysound, sf::SoundBuffer &sb, socket &s,
              thread *recorder, bool &onPlay, bool &onPlayGroup, string &name,
              unordered_map<string, pair<sf::Sound, sf::SoundBuffer>> &sounds,
@@ -318,8 +328,10 @@ bool attends(message &rep, sf::Sound &mysound, sf::SoundBuffer &sb, socket &s,
     callResponse(rep, name, onPlay, recorder, s);
   } else if (act == "callResponseGroup") {
     callResponseGroup(rep, onPlay, onPlayGroup, out, recorder, s);
-  }  else if (act == "stop") {
+  } else if (act == "stop") {
     stop(rep, onPlay);
+  } else if (act == "endCall") {
+    endCall(rep, onPlayGroup, groupName, out);
   } else if (act == "addGroup") {
     addGroup(rep);
   } else if (act == "addFriend") {
@@ -404,10 +416,9 @@ int main(int argc, char *argv[]) {
           if (!onPlayGroup) {
             cout << "You are not in a group call" << endl;
           } else {
-            onPlayGroup = false;
-            out = true;
-            cout << "The call in the group " << groupName << " has finished" << endl;
-            sounds.clear();
+            message m;
+            m << "stopGroup";
+            s.send(m);
           }
         } else if (tokens[0] == "login") {
           cout << "You had already logged!" << endl;
@@ -425,5 +436,6 @@ int main(int argc, char *argv[]) {
   }
 
   if (recorder != nullptr) recorder->join();
+  sounds.clear();
   return EXIT_SUCCESS;
 }

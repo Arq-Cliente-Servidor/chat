@@ -267,6 +267,10 @@ void listGroup(const string &sender, const string &senderName, ServerState &serv
   server.listGroup(senderName);
 }
 
+void stopGroup(const string &sender, const string &senderName, ServerState &server) {
+  server.stopGroup(sender, senderName);
+}
+
 void dispatch(message &msg, ServerState &server) {
   string sender;
   msg >> sender;
@@ -277,7 +281,8 @@ void dispatch(message &msg, ServerState &server) {
   msg >> action;
   string senderName = server.getUserName(sender);
 
-  if (action != "stop" and action != "logout" and action != "listGroup" and !checker(msg, 3, sender, server))
+  if (action != "stop" and action != "logout" and action != "stopGroup"
+      and action != "listGroup" and !checker(msg, 3, sender, server))
     return;
 
   if (action == "login") {
@@ -316,6 +321,8 @@ void dispatch(message &msg, ServerState &server) {
     removeFriend(msg, sender, senderName, server);
   } else if (action == "leaveGroup") {
     leaveGroup(msg, sender, senderName, server);
+  } else if (action == "stopGroup") {
+    stopGroup(sender, senderName, server);
   } else if (action == "warning") {
     warning(msg, sender, senderName, server);
   } else if (action == "listGroup") {
