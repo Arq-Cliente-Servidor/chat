@@ -279,14 +279,15 @@ public:
   }
 
   void recordGroup(const string &sender, const string &senderName, const string &groupName, vector<int16_t> &samples,
-                   const int sampleCount, const int channelCount, const int sampleRate) {
+                   const int sampleCount, const int channelCount, const int sampleRate, bool isCall = false) {
 
     if (isGroup(groupName)) {
       for (const auto &user : groups[groupName]) {
         string id = getId(user);
         if (id.size() and id != sender) {
           message m;
-          m << id << "recordReceiveGroup" << groupName << senderName << samples << sampleCount << channelCount << sampleRate;
+          string act = (isCall) ? "callGroupReceive" : "recordReceiveGroup";
+          m << id << act << groupName << senderName << samples << sampleCount << channelCount << sampleRate;
           send(m);
         }
       }
@@ -297,19 +298,15 @@ public:
     }
   }
 
-  void callGroup(const string &sender, const string &senderName, const string &groupName, vector<int16_t> &samples,
-                   const int sampleCount, const int channelCount, const int sampleRate) {
+  void acceptCallGroup(const string &sender, const string &senderName, const string &groupName) {
 
     if (isGroup(groupName)) {
       for (const auto &user : groups[groupName]) {
         string id = getId(user);
-        if (id.size() and id != sender) {
-          message m;
-          m << id << "callGroupReceive" << senderName << samples << sampleCount << channelCount << sampleRate;
-          send(m);
-          message m2;
-            // m2 << id << "callGroup" << groupName;
-            // send(m2);
+        if (id.size()) {
+          message rep;
+          rep << id << "callResponseGroup" << groupName;
+          server.send(rep);
         }
       }
     } else {

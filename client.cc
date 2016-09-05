@@ -68,24 +68,15 @@ void recordCallGroupSend(bool &onPlayGroup, const string act, const string group
 }
 
 bool soundCapture(vector<string> &tokens, socket &s, thread *recorder,
-                  bool &onPlay, bool &onPlayGroup, string &groupName) {
+                  bool &onPlay, string &groupName) {
 
   if (tokens.size() > 1) {
     if (tokens[0] == "recordTo" or tokens[0] == "recordGroup") {
       message msg = record(tokens[0], tokens[1]);
       s.send(msg);
       return true;
-    } else if (tokens[0] == "callGroup") {
-      if (onPlayGroup or onPlay) {
-        cout << "You are already in a call" << endl;
-      } else {
-        onPlayGroup = true;
-        groupName = tokens[1];
-        recorder = new thread(recordCallGroupSend, ref(onPlayGroup), tokens[0], tokens[1], ref(s));
-        cout << "calling in the group " + groupName + "..." << endl;
-      }
-      return true;
-    } else return false;
+    }
+    else return false;
   }
   return false;
 }
@@ -208,6 +199,18 @@ void callResponse(message &rep, string &name, bool &onPlay, thread *recorder, so
   }
 }
 
+void callResponseGroup(message &rep, bool &onPlay, bool &onPlayGroup, thread *recorder, socket &s) {
+  string groupName;
+  rep >> groupName;
+
+  if (!onPlayGroup and !onPlay) {
+    onPlayGroup = true;
+    string action = "callingGroup";
+    recorder = new thread(recordCallGroupSend, ref(onPlayGroup), action, groupName, ref(s));
+  }
+}
+
+
 void stop(message &rep, bool &onPlay) {
   if (!onPlay) {
     cout << "There is not an active call one by one." << endl;
@@ -287,7 +290,9 @@ bool attends(message &rep, sf::Sound &mysound, sf::SoundBuffer &sb, socket &s,
     callRequest(rep, s, onPlay);
   } else if (act == "callResponse") {
     callResponse(rep, name, onPlay, recorder, s);
-  } else if (act == "stop") {
+  } else if (act == "callResponseGroup") {
+    callResponseGroup(rep, onPlay, onPlayGroup, recorder, s);
+  }  else if (act == "stop") {
     stop(rep, onPlay);
   } else if (act == "stopGroup") {
     stopGroup(rep, onPlayGroup);
@@ -382,7 +387,7 @@ int main(int argc, char *argv[]) {
           cout << "You had already logged!" << endl;
         } else if (tokens[0] == "register") {
           cout << "You was already registered!" << endl;
-        } else if (!soundCapture(tokens, s, recorder, onPlay, onPlayGroup, groupName)) {
+        } else if (!soundCapture(tokens, s, recorder, onPlay, groupName)) {
           message msg;
           for (const auto &str : tokens) {
             msg << str;

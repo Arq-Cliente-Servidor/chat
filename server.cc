@@ -177,21 +177,10 @@ void recordGroup(message &msg, const string &sender, const string &senderName,
   server.recordGroup(sender, senderName, groupName, samples, sampleCount, channelCount, sampleRate);
 }
 
-void callGroup(message &msg, const string &sender, const string &senderName,
-                 ServerState &server) {
-  if (msg.parts() < 7 or !checker(msg, 7, sender, server)) return;
-
+void callRequestGroup(message &msg, const string &sender, const string &senderName, ServerState &server) {
   string groupName;
   msg >> groupName;
-  vector<int16_t> samples;
-  msg >> samples;
-  int sampleCount;
-  msg >> sampleCount;
-  int channelCount;
-  msg >> channelCount;
-  int sampleRate;
-  msg >> sampleRate;
-  server.callGroup(sender, senderName, groupName, samples, sampleCount, channelCount, sampleRate);
+  server.acceptCallGroup(sender, senderName, groupName);
 }
 
 void callRequest(message &msg, const string &sender, const string &senderName, ServerState &server) {
@@ -322,7 +311,7 @@ void dispatch(message &msg, ServerState &server) {
   } else if (action == "calling") {
     recordTo(msg, sender, senderName, server, true);
   } else if (action == "callGroup") {
-    callGroup(msg, sender, senderName, server);
+    callRequestGroup(msg, sender, senderName, server);
   } else if (action == "accept") {
     acceptCall(msg, sender, senderName, server);
   } else if (action == "stop") {
