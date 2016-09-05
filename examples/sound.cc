@@ -2,6 +2,7 @@
 #include <SFML/Audio.hpp>
 #include <string>
 #include <unistd.h>
+#include <unordered_map>
 
 using namespace std;
 
@@ -69,17 +70,42 @@ void playMusic(const string &filename) {
   cout << endl << endl;
 }
 
-int main() {
-  // Play a sound
-  playSound();
+using namespace sf;
 
-  // Play music from an ogg file
-  playMusic("ding.flac");
-  playMusic("orchestral.ogg");
+int ho(unordered_map<int, pair<Sound, SoundBuffer>> &sounds) {
+  string path = getPath("/examples/resources/");
+  for (int i = 0; i < 20; ++i) {
+    if (!sounds[i].second.loadFromFile(path + "orchestral.ogg")) return -1;
+    if ((i & 1) and !sounds[i].second.loadFromFile(path + "canary.wav")) return -1;
+    sounds[i].first.setBuffer(sounds[i].second);
+    sounds[i].first.play();
+  }
 
-  // Wait until the user presses 'enter' key
-  cout << "Press enter to exit..." << endl;
-  cin.ignore(10000, '\n');
-
-  return EXIT_SUCCESS;
+  cout << "sali" << endl;
 }
+
+int main() {
+  // load something into the sound buffer...
+  // if (!buffer.loadFromFile("sou.ogg")) return -1;
+  unordered_map<int, pair<Sound, SoundBuffer>> sounds;
+  ho(sounds);
+
+  int t;
+  cin >> t;
+  return 0;
+}
+
+// int main() {
+//   // Play a sound
+//   playSound();
+//
+//   // Play music from an ogg file
+//   playMusic("ding.flac");
+//   playMusic("orchestral.ogg");
+//
+//   // Wait until the user presses 'enter' key
+//   cout << "Press enter to exit..." << endl;
+//   cin.ignore(10000, '\n');
+//
+//   return EXIT_SUCCESS;
+// }

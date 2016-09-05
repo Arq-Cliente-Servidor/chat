@@ -171,7 +171,9 @@ public:
       m << senderId << "warning" << name + " was already in the group " + groupName << true;
       send(m);
       return false;
-    } else if (isUser(friendName) and isFriend(senderName, friendName) and isConnected(friendName)) {
+    } else if (isUser(friendName) and isFriend(senderName, friendName) and
+              isConnected(friendName) and belongsGroup(groupName, senderName)) {
+
       groups[groupName].push_back(friendName);
       for (const auto &user : groups[groupName]) {
         string id = getId(user);
@@ -277,23 +279,37 @@ public:
   }
 
   void recordGroup(const string &sender, const string &senderName, const string &groupName, vector<int16_t> &samples,
-                   const int sampleCount, const int channelCount, const int sampleRate, bool isCall = false) {
+                   const int sampleCount, const int channelCount, const int sampleRate) {
 
     if (isGroup(groupName)) {
       for (const auto &user : groups[groupName]) {
         string id = getId(user);
         if (id.size() and id != sender) {
           message m;
-          if (isCall) {
-            m << id << "callGroupReceive" << senderName << samples << sampleCount << channelCount << sampleRate;
-            send(m);
-            message m2;
-            m2 << id << "callGroup" << groupName;
-            send(m2);
-          } else {
-            m << id << "recordReceiveGroup" << groupName << senderName << samples << sampleCount << channelCount << sampleRate;
-            send(m);
-          }
+          m << id << "recordReceiveGroup" << groupName << senderName << samples << sampleCount << channelCount << sampleRate;
+          send(m);
+        }
+      }
+    } else {
+      message m;
+      m << sender << "warning" << "The group " + groupName + " does not exist/not found." << true;
+      send(m);
+    }
+  }
+
+  void callGroup(const string &sender, const string &senderName, const string &groupName, vector<int16_t> &samples,
+                   const int sampleCount, const int channelCount, const int sampleRate) {
+
+    if (isGroup(groupName)) {
+      for (const auto &user : groups[groupName]) {
+        string id = getId(user);
+        if (id.size() and id != sender) {
+          message m;
+          m << id << "callGroupReceive" << senderName << samples << sampleCount << channelCount << sampleRate;
+          send(m);
+          message m2;
+            // m2 << id << "callGroup" << groupName;
+            // send(m2);
         }
       }
     } else {
@@ -312,5 +328,27 @@ public:
         send(m);
       }
     }
+  }
+
+  void listGroup(const string &name) {
+    message m;
+    string id = getId(name);
+    string listGroups = "\nList Group:\n";
+    string gr;
+    for (const auto &group : groups) {
+      for (const auto &user : group.second) {
+        if (user == name) {
+          gr += "* " + group.first + "\n";
+          break;
+        }
+      }
+    }
+    if (gr.size()) {
+      listGroups += gr;
+    } else {
+      listGroups + "None";
+    }
+    m << id << "warning" << listGroups << true;
+    send(m);
   }
 };

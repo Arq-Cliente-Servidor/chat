@@ -380,6 +380,8 @@ int main(int argc, char *argv[]) {
           }
         } else if (tokens[0] == "login") {
           cout << "You had already logged!" << endl;
+        } else if (tokens[0] == "register") {
+          cout << "You was already registered!" << endl;
         } else if (!soundCapture(tokens, s, recorder, onPlay, onPlayGroup, groupName)) {
           message msg;
           for (const auto &str : tokens) {

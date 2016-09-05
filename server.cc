@@ -161,7 +161,7 @@ void recordTo(message &msg, const string &sender, const string &senderName,
 }
 
 void recordGroup(message &msg, const string &sender, const string &senderName,
-                 ServerState &server, bool isCall = false) {
+                 ServerState &server) {
   if (msg.parts() < 7 or !checker(msg, 7, sender, server)) return;
 
   string groupName;
@@ -174,7 +174,24 @@ void recordGroup(message &msg, const string &sender, const string &senderName,
   msg >> channelCount;
   int sampleRate;
   msg >> sampleRate;
-  server.recordGroup(sender, senderName, groupName, samples, sampleCount, channelCount, sampleRate, isCall);
+  server.recordGroup(sender, senderName, groupName, samples, sampleCount, channelCount, sampleRate);
+}
+
+void callGroup(message &msg, const string &sender, const string &senderName,
+                 ServerState &server) {
+  if (msg.parts() < 7 or !checker(msg, 7, sender, server)) return;
+
+  string groupName;
+  msg >> groupName;
+  vector<int16_t> samples;
+  msg >> samples;
+  int sampleCount;
+  msg >> sampleCount;
+  int channelCount;
+  msg >> channelCount;
+  int sampleRate;
+  msg >> sampleRate;
+  server.callGroup(sender, senderName, groupName, samples, sampleCount, channelCount, sampleRate);
 }
 
 void callRequest(message &msg, const string &sender, const string &senderName, ServerState &server) {
@@ -263,6 +280,10 @@ void warning(message &msg, const string &sender, const string &senderName, Serve
   server.send(m);
 }
 
+void listGroup(const string &sender, const string &senderName, ServerState &server) {
+  server.listGroup(senderName);
+}
+
 void dispatch(message &msg, ServerState &server) {
   string sender;
   msg >> sender;
@@ -273,7 +294,7 @@ void dispatch(message &msg, ServerState &server) {
   msg >> action;
   string senderName = server.getUserName(sender);
 
-  if (action != "stop" and action != "logout" and !checker(msg, 3, sender, server))
+  if (action != "stop" and action != "logout" and action != "listGroup" and !checker(msg, 3, sender, server))
     return;
 
   if (action == "login") {
@@ -301,7 +322,7 @@ void dispatch(message &msg, ServerState &server) {
   } else if (action == "calling") {
     recordTo(msg, sender, senderName, server, true);
   } else if (action == "callGroup") {
-    recordGroup(msg, sender, senderName, server, true);
+    callGroup(msg, sender, senderName, server);
   } else if (action == "accept") {
     acceptCall(msg, sender, senderName, server);
   } else if (action == "stop") {
@@ -314,6 +335,8 @@ void dispatch(message &msg, ServerState &server) {
     leaveGroup(msg, sender, senderName, server);
   } else if (action == "warning") {
     warning(msg, sender, senderName, server);
+  } else if (action == "listGroup") {
+    listGroup(sender, senderName, server);
   } else {
     message m;
     m << sender << "warning" << "The action " + action + " is not supported/implemented." << true;
