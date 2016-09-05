@@ -340,7 +340,7 @@ public:
 
   void stopGroup(const string &sender, const string &senderName) {
     message m;
-    m << "endCall" << true;
+    m << sender << "endCall" << true;
     send(m);
   }
 };
