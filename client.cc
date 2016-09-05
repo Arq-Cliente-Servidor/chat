@@ -150,7 +150,7 @@ void recordReceiveGroup(message &rep, sf::Sound &mysound, sf::SoundBuffer &sb, b
   rep >> sampleRate;
   if (!isCall)
     cout << "[" << groupName << "] " << senderName << " records to you" << endl;
-  play(mysound, sb, samples, sampleCount, channelCount, sampleRate);
+  play(mysound, sb, samples, sampleCount, channelCount, sampleRate, true);
 }
 
 void callRequest(message &rep, socket &s, bool &onPlay) {
