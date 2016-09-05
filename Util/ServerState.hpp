@@ -316,17 +316,6 @@ public:
     }
   }
 
-  void stopCallGroup(const string &sender, const string &senderName, const string &groupName) {
-    for (const auto &user : groups[groupName]) {
-      string id = getId(user);
-      if (id.size() and id != sender) {
-        message m;
-        m << id << "stopGroup" << groupName;
-        send(m);
-      }
-    }
-  }
-
   void listGroup(const string &name) {
     message m;
     string id = getId(name);

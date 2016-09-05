@@ -230,12 +230,6 @@ void stopCall(message &msg, const string &sender, const string &senderName, Serv
   server.send(rep);
 }
 
-void stopCallGroup(message &msg, const string &sender, const string &senderName, ServerState &server) {
-  string groupName;
-  msg >> groupName;
-  server.stopCallGroup(sender, senderName, groupName);
-}
-
 void removeFriend(message &msg, const string &sender, const string &senderName, ServerState &server) {
   string friendName;
   msg >> friendName;
@@ -318,8 +312,6 @@ void dispatch(message &msg, ServerState &server) {
     acceptCall(msg, sender, senderName, server);
   } else if (action == "stop") {
     stopCall(msg, sender, senderName, server);
-  } else if (action == "stopGroup") {
-    stopCallGroup(msg, sender, senderName, server);
   } else if (action == "removeFriend") {
     removeFriend(msg, sender, senderName, server);
   } else if (action == "leaveGroup") {
