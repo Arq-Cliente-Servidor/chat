@@ -46,7 +46,7 @@ public:
   bool isFriend(const string &user) {
     for (const auto &contact : contacts) {
       if (contact == user)
-      return true;
+        return true;
     }
     return false;
   }
@@ -85,20 +85,28 @@ public:
   void send(message &msg) { sckt.send(msg); }
 
   string getId(const string &name) {
-    if (users.count(name)) return users[name].getId();
+    if (isUser(name))
+      return users[name].getId();
     else return "";
   }
 
   string getUserName(const string &id) {
     for (const auto &user : users) {
       if (user.second.getId() == id)
-      return user.first;
+        return user.first;
     }
     return "";
   }
 
+  bool isFriend(const string &userName, const string &friendName) {
+    if (isUser(friendName)) {
+      return users[userName].isFriend(friendName);
+    }
+    return false;
+  }
+
   bool removeFriend(const string &senderName, const string &friendName) {
-    if (users.count(friendName) and users[senderName].isFriend(friendName)) {
+    if (isUser(friendName) and isFriend(senderName, friendName)) {
       return users[senderName].removeContact(friendName);
     }
     return false;
@@ -108,12 +116,18 @@ public:
     users[name].disconnect(id);
   }
 
-  bool isConnected(const string &name) {
-    users[name].isConnected();
+  bool isUser(const string &userName) {
+    return (users.count(userName) > 0);
   }
 
+  bool isGroup(const string &groupName) {
+    return (groups.count(groupName) > 0);
+  }
+
+  bool isConnected(const string &name) { users[name].isConnected(); }
+
   void newUser(const string &name, const string &pwd, const string &id) {
-    if (users.count(name)) {
+    if (isUser(name)) {
       message m;
       m << id << "warning" << "this user already exists, please choose another.." << false;
       send(m);
@@ -127,7 +141,7 @@ public:
   }
 
   bool login(const string &name, const string &pwd, const string &id) {
-    if (users.count(name)) {
+    if (isUser(name)) {
       // User is registered
       bool ok = users[name].isPassword(pwd);
       if (ok) users[name].connect(id);
@@ -139,28 +153,28 @@ public:
   void addFriend(const string &from, const string &to) {
     if (from == to) {
       message m;
-      string id = users[from].getId();
+      string id = getId(from);
       m << id << "warning" << "You can not be your own friend!" << true;
       send(m);
-    } else if (users.count(to)) {
+    } else if (isUser(to)) {
       if (users[from].addContact(to)) {
         users[to].addContact(from);
 
         // Messages for me
-        string fromId = users[from].getId();
+        string fromId = getId(from);
         string txt1 = to + " is already your friend.";
         message m1;
         m1 << fromId << "warning" << txt1 << true;
         send(m1);
 
         // Messages for my friend
-        string toId = users[to].getId();
+        string toId = getId(to);
         string txt2 = from + " has added you as your friend.";
         message m2;
         m2 << toId << "warning" << txt2 << true;
         send(m2);
       } else {
-        string id = users[from].getId();
+        string id = getId(from);
         string txt = "The user " + to + " was already your friend.";
         message m;
         m << id << "warning" << txt << true;
@@ -168,22 +182,20 @@ public:
       }
     } else {
       message m;
-      m << users[from].getId() << "warning"
-        << "The user " + to + " is not found" << true;
+      m << getId(from) << "warning" << "The user " + to + " is not found" << true;
       send(m);
     }
   }
 
   string chatTo(const string &senderName, const string &friendName) {
-    if (users.count(friendName) and users[friendName].isConnected() and users[senderName].isFriend(friendName)) {
-      return users[friendName].getId();
-    } else
-    return "";
+    if (isUser(friendName) and isConnected(friendName) and isFriend(senderName, friendName)) {
+      return getId(friendName);
+    } else return "";
   }
 
   void createGroup(const string &groupName, const string &name) {
-    string id = users[name].getId();
-    if (groups.count(groupName)) {
+    string id = getId(name);
+    if (isGroup(groupName)) {
       message m;
       m << id << "warning" << "The group " + groupName + " was already created." << true;
       send(m);
@@ -198,15 +210,16 @@ public:
   }
 
   bool belongsGroup(const string &groupName, const string &name) {
-    if (!groups.count(groupName)) return false;
+    if (!isGroup(groupName)) return false;
     for (const auto &it : groups[groupName]) if (it == name) {
       return true;
     }
     return false;
   }
 
-  bool addGroup(const string &groupName, const string &senderId, const string &friendName, const string &senderName) {
-    if (!groups.count(groupName)) {
+  bool addGroup(const string &groupName, const string &senderId,
+                const string &friendName, const string &senderName) {
+    if (!isGroup(groupName)) {
       message m;
       m << senderId << "warning" << "The group " + groupName + " does not exist." << true;
       send(m);
@@ -217,7 +230,7 @@ public:
       m << senderId << "warning" << name + " was already in the group " + groupName << true;
       send(m);
       return false;
-    } else if (users.count(friendName) and users[senderName].isFriend(friendName) and users[friendName].isConnected()) {
+    } else if (isUser(friendName) and isFriend(senderName, friendName) and isConnected(friendName)) {
       groups[groupName].push_back(friendName);
       for (const auto &user : groups[groupName]) {
         string id = getId(user);
@@ -237,9 +250,10 @@ public:
   }
 
   bool exit(const string &groupName, const string &name) {
-    if (groups.count(groupName) and belongsGroup(groupName, name)) {
+    if (isGroup(groupName) and belongsGroup(groupName, name)) {
       list<string>::iterator user;
-      for (user = groups[groupName].begin(); user != groups[groupName].end(); ++user) {
+      for (user = groups[groupName].begin(); user != groups[groupName].end();
+           ++user) {
         if (*user == name) {
           groups[groupName].erase(user);
           return true;
@@ -275,7 +289,7 @@ public:
   }
 
   void groupChat(const string &groupName, const string &sender, const string &senderName, const string &text) {
-    if (groups.count(groupName)) {
+    if (isGroup(groupName)) {
       for (const auto &user : groups[groupName]) {
         string id = getId(user);
         if (id.size() and id != sender) {
@@ -304,8 +318,8 @@ public:
 
     if (id.size()) {
       message msg;
-      string friendId = users[friendName].getId();
-      string act = (isCall)? "callReceive" : "recordReceive";
+      string friendId = getId(friendName);
+      string act = (isCall) ? "callReceive" : "recordReceive";
       msg << friendId << act << senderName << samples << sampleCount << channelCount << sampleRate;
       send(msg);
     } else {
@@ -324,12 +338,12 @@ public:
   void recordGroup(const string &sender, const string &senderName, const string &groupName, vector<int16_t> &samples,
                    const int sampleCount, const int channelCount, const int sampleRate, bool isCall = false) {
 
-    if (groups.count(groupName)) {
+    if (isGroup(groupName)) {
       for (const auto &user : groups[groupName]) {
         string id = getId(user);
         if (id.size() and id != sender) {
           message m;
-          string act = (isCall)? "callReceive" : "recordReceiveGroup";
+          string act = (isCall) ? "callReceive" : "recordReceiveGroup";
           m << id << act << groupName << senderName << samples << sampleCount << channelCount << sampleRate;
           send(m);
         }
@@ -476,7 +490,9 @@ void groupChat(message &msg, const string &sender, const string &senderName, Ser
   server.groupChat(groupName, sender, senderName, textContent);
 }
 
-void recordTo(message &msg, const string &sender, const string &senderName, ServerState &server, bool isCall = false) {
+void recordTo(message &msg, const string &sender, const string &senderName,
+              ServerState &server, bool isCall = false) {
+
   if (msg.parts() < 7 or !checker(msg, 7, sender, server)) return;
 
   string friendName;
@@ -492,7 +508,8 @@ void recordTo(message &msg, const string &sender, const string &senderName, Serv
   server.recordTo(sender, senderName, friendName, samples, sampleCount, channelCount, sampleRate, isCall);
 }
 
-void recordGroup(message &msg, const string &sender, const string &senderName, ServerState &server, bool isCall = false) {
+void recordGroup(message &msg, const string &sender, const string &senderName,
+                 ServerState &server, bool isCall = false) {
   if (msg.parts() < 7 or !checker(msg, 7, sender, server)) return;
 
   string groupName;
@@ -508,13 +525,22 @@ void recordGroup(message &msg, const string &sender, const string &senderName, S
   server.recordGroup(sender, senderName, groupName, samples, sampleCount, channelCount, sampleRate, isCall);
 }
 
-void callRequest(message &msg, const string &senderName, ServerState &server) {
+void callRequest(message &msg, const string &sender, const string &senderName, ServerState &server) {
   string friendName;
   msg >> friendName;
-  string friendId = server.getId(friendName);
-  message m;
-  m << friendId << "callRequest" << senderName << " is calling press (y = accept, n = reject) ";
-  server.send(m);
+  if (server.isFriend(senderName, friendName)) {
+    string friendId = server.getId(friendName);
+    message m;
+    m << friendId << "callRequest" << senderName << " is calling press (y = accept, n = reject) ";
+    server.send(m);
+  } else {
+    message m;
+    string txt = (senderName == friendName)
+                     ? "You can not make calls yourself!"
+                     : friendName + " is offline/not exist/not your friend";
+    m << sender << "warning" << txt << true;
+    server.send(m);
+  }
 }
 
 void acceptCall(message &msg, const string &sender, const string &senderName, ServerState &server) {
@@ -569,6 +595,15 @@ void leaveGroup(message &msg, const string &sender, const string &senderName, Se
   server.leaveGroup(groupName, sender, senderName);
 }
 
+void warning(message &msg, const string &sender, const string &senderName, ServerState &server) {
+  string friendName;
+  msg >> friendName;
+  message m;
+  string friendId = server.getId(friendName);
+  m << friendId << "warning" << "The user " + senderName + " is already in a call" << true;
+  server.send(m);
+}
+
 void dispatch(message &msg, ServerState &server) {
   string sender;
   msg >> sender;
@@ -579,7 +614,8 @@ void dispatch(message &msg, ServerState &server) {
   msg >> action;
   string senderName = server.getUserName(sender);
 
-  if (action != "stop" and action != "logout" and !checker(msg, 3, sender, server)) return;
+  if (action != "stop" and action != "logout" and !checker(msg, 3, sender, server))
+    return;
 
   if (action == "login") {
     login(msg, sender, server);
@@ -602,7 +638,7 @@ void dispatch(message &msg, ServerState &server) {
   } else if (action == "recordGroup") {
     recordGroup(msg, sender, senderName, server);
   } else if (action == "callTo") {
-    callRequest(msg, senderName, server);
+    callRequest(msg, sender, senderName, server);
   } else if (action == "calling") {
     recordTo(msg, sender, senderName, server, true);
   } else if (action == "callGroup") {
@@ -615,6 +651,8 @@ void dispatch(message &msg, ServerState &server) {
     removeFriend(msg, sender, senderName, server);
   } else if (action == "leaveGroup") {
     leaveGroup(msg, sender, senderName, server);
+  } else if (action == "warning") {
+    warning(msg, sender, senderName, server);
   } else {
     message m;
     m << sender << "warning" << "The action " + action + " is not supported/implemented." << true;
