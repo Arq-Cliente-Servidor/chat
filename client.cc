@@ -50,8 +50,7 @@ message record(const string &act, const string &friendName, bool isRecord = true
   vector<int16_t> buffer_msg(samples, samples + sampleCount);
   int channelCount = buffer.getChannelCount();
 
-  msg << act << friendName << buffer_msg << sampleCount << channelCount
-      << sampleRate;
+  msg << act << friendName << buffer_msg << sampleCount << channelCount << sampleRate;
   return msg;
 }
 
