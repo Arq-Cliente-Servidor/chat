@@ -19,11 +19,13 @@ vector<string> tokenize(string &input) {
   stringstream ss(input);
   vector<string> result;
   string s;
-  while (ss >> s) result.push_back(s);
+  while (ss >> s)
+    result.push_back(s);
   return result;
 }
 
-message record(const string &act, const string &friendName, bool isRecord = true, int tm = 500) {
+message record(const string &act, const string &friendName,
+               bool isRecord = true, int tm = 500) {
   message msg;
   sf::SoundBufferRecorder recorder;
   unsigned int sampleRate = 44100;
@@ -49,33 +51,37 @@ message record(const string &act, const string &friendName, bool isRecord = true
   vector<int16_t> buffer_msg(samples, samples + sampleCount);
   int channelCount = buffer.getChannelCount();
 
-  msg << act << friendName << buffer_msg << sampleCount << channelCount << sampleRate;
+  msg << act << friendName << buffer_msg << sampleCount << channelCount
+      << sampleRate;
   return msg;
 }
 
-void recordCallSend(bool &onPlay, const string act, const string friendName, socket &s) {
+void recordCallSend(bool &onPlay, const string act, const string friendName,
+                    socket &s) {
   while (onPlay) {
-   message msg = record(act, friendName, false);
-   s.send(msg);
+    message msg = record(act, friendName, false);
+    s.send(msg);
   }
 }
 
-void recordCallGroupSend(bool &onPlayGroup, const string act, const string groupName, socket &s) {
+void recordCallGroupSend(bool &onPlayGroup, const string act,
+                         const string groupName, socket &s) {
   while (onPlayGroup) {
     message msg = record(act, groupName, false, 500);
     s.send(msg);
   }
 }
 
-bool soundCapture(vector<string> &tokens, socket &s, thread *recorder, bool &onPlay) {
+bool soundCapture(vector<string> &tokens, socket &s, thread *recorder,
+                  bool &onPlay) {
 
   if (tokens.size() > 1) {
     if (tokens[0] == "recordTo" or tokens[0] == "recordGroup") {
       message msg = record(tokens[0], tokens[1]);
       s.send(msg);
       return true;
-    }
-    else return false;
+    } else
+      return false;
   }
   return false;
 }
@@ -107,10 +113,11 @@ void receive(message &rep) {
   rep >> senderName;
   string textContent;
   rep >> textContent;
-  cout << "*" << senderName << " says: " << textContent << endl;
+  cout << "> " << senderName << " said: " << textContent << endl;
 }
 
-void recordReceive(message &rep, sf::Sound &mysound, sf::SoundBuffer &sb, bool isCall = false) {
+void recordReceive(message &rep, sf::Sound &mysound, sf::SoundBuffer &sb,
+                   bool isCall = false) {
   string senderName;
   rep >> senderName;
   vector<int16_t> samples;
@@ -131,10 +138,11 @@ void groupReceive(message &rep) {
   rep >> senderName;
   string text;
   rep >> text;
-  cout << "[" << groupName << "] " << senderName << " says: " << text << endl;
+  cout << "[" << groupName << "] > " << senderName << " said: " << text << endl;
 }
 
-void recordReceiveGroup(message &rep, sf::Sound &mysound, sf::SoundBuffer &sb, bool isCall = false) {
+void recordReceiveGroup(message &rep, sf::Sound &mysound, sf::SoundBuffer &sb,
+                        bool isCall = false) {
   string groupName;
   rep >> groupName;
   string senderName;
@@ -152,8 +160,9 @@ void recordReceiveGroup(message &rep, sf::Sound &mysound, sf::SoundBuffer &sb, b
   play(mysound, sb, samples, sampleCount, channelCount, sampleRate, true);
 }
 
-void messageGroupPlay(sf::Sound &mysound, sf::SoundBuffer &sb, vector<int16_t> &samples,
-                      int sampleCount, int channelCount, const unsigned int sampleRate) {
+void messageGroupPlay(sf::Sound &mysound, sf::SoundBuffer &sb,
+                      vector<int16_t> &samples, int sampleCount,
+                      int channelCount, const unsigned int sampleRate) {
 
   int16_t *buffer = &samples[0];
 
@@ -166,7 +175,10 @@ void messageGroupPlay(sf::Sound &mysound, sf::SoundBuffer &sb, vector<int16_t> &
   mysound.play();
 }
 
-void messageGroup(message &rep, unordered_map<string, pair<sf::Sound, sf::SoundBuffer>> &sounds, string &gr) {
+void messageGroup(
+    message &rep,
+    unordered_map<string, pair<sf::Sound, sf::SoundBuffer>> &sounds,
+    string &gr) {
   string groupName;
   rep >> groupName;
   gr = groupName;
@@ -181,7 +193,8 @@ void messageGroup(message &rep, unordered_map<string, pair<sf::Sound, sf::SoundB
   int sampleRate;
   rep >> sampleRate;
 
-  messageGroupPlay(sounds[senderName].first, sounds[senderName].second, samples, sampleCount, channelCount, sampleRate);
+  messageGroupPlay(sounds[senderName].first, sounds[senderName].second, samples,
+                   sampleCount, channelCount, sampleRate);
 }
 
 void callRequest(message &rep, socket &s, bool &onPlay) {
@@ -211,7 +224,8 @@ void callRequest(message &rep, socket &s, bool &onPlay) {
   }
 }
 
-void callResponse(message &rep, string &name, bool &onPlay, thread *recorder, socket &s) {
+void callResponse(message &rep, string &name, bool &onPlay, thread *recorder,
+                  socket &s) {
   string friendName;
   rep >> friendName;
   string txt;
@@ -225,23 +239,25 @@ void callResponse(message &rep, string &name, bool &onPlay, thread *recorder, so
     onPlay = true;
     string action = "calling";
     cout << "calling to " << friendName << endl;
-    recorder = new thread(recordCallSend, ref(onPlay), action, friendName, ref(s));
+    recorder =
+        new thread(recordCallSend, ref(onPlay), action, friendName, ref(s));
   } else {
     cout << "The call could not be performed" << endl;
   }
 }
 
-void callResponseGroup(message &rep, bool &onPlay, bool &onPlayGroup, bool &out, thread *recorder, socket &s) {
+void callResponseGroup(message &rep, bool &onPlay, bool &onPlayGroup, bool &out,
+                       thread *recorder, socket &s) {
   string groupName;
   rep >> groupName;
 
   if (!onPlayGroup and !onPlay and !out) {
     onPlayGroup = true;
     string action = "callingGroup";
-    recorder = new thread(recordCallGroupSend, ref(onPlayGroup), action, groupName, ref(s));
+    recorder = new thread(recordCallGroupSend, ref(onPlayGroup), action,
+                          groupName, ref(s));
   }
 }
-
 
 void stop(message &rep, bool &onPlay) {
   if (!onPlay) {
@@ -287,7 +303,8 @@ void callGroup(message &rep, sf::Sound &mysound, sf::SoundBuffer &sb,
     string groupName;
     rep >> groupName;
     gName = groupName;
-    recorder = new thread(recordCallGroupSend, ref(onPlayGroup), "callGroup", groupName, ref(s));
+    recorder = new thread(recordCallGroupSend, ref(onPlayGroup), "callGroup",
+                          groupName, ref(s));
   }
 }
 
@@ -313,7 +330,8 @@ bool attends(message &rep, sf::Sound &mysound, sf::SoundBuffer &sb, socket &s,
   } else if (act == "callReceive") {
     recordReceive(rep, mysound, sb, true);
   } else if (act == "callGroup") {
-    callGroup(rep, mysound, sb, recorder, s, onPlayGroup, onPlay, out, groupName);
+    callGroup(rep, mysound, sb, recorder, s, onPlayGroup, onPlay, out,
+              groupName);
   } else if (act == "callGroupReceive") {
     messageGroup(rep, sounds, groupName);
   } else if (act == "groupReceive") {
@@ -367,12 +385,12 @@ int main(int argc, char *argv[]) {
   string groupName;
   unordered_map<string, pair<sf::Sound, sf::SoundBuffer>> sounds;
 
-
   context ctx;
   socket s(ctx, socket_type::xrequest);
 
   if (action != "login" and action != "register") {
-    cerr << "invalid operation, usage: <address> <action> <username> <password>" << endl;
+    cerr << "invalid operation, usage: <address> <action> <username> <password>"
+         << endl;
     return EXIT_FAILURE;
   }
 
@@ -394,7 +412,8 @@ int main(int argc, char *argv[]) {
         // Handle input in socket
         message msg;
         s.receive(msg);
-        if (!attends(msg, mysound, sb, s, recorder, onPlay, onPlayGroup, friendName, sounds, out, groupName))
+        if (!attends(msg, mysound, sb, s, recorder, onPlay, onPlayGroup,
+                     friendName, sounds, out, groupName))
           break;
       }
       if (poll.has_input(console)) {
@@ -435,7 +454,8 @@ int main(int argc, char *argv[]) {
     }
   }
 
-  if (recorder != nullptr) recorder->join();
+  if (recorder != nullptr)
+    recorder->join();
   sounds.clear();
   return EXIT_SUCCESS;
 }

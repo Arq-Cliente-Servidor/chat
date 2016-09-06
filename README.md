@@ -93,10 +93,61 @@ It is used to send a text message to a group.
 
 It is used to send a voice message to a friend.
 
-      recordTo <friendName> <voiceMessage>
+      recordTo <friendName>
 
 ## Send a voice message to a group
 
 It is used to send a voice message to a group.
 
-      recordGroup <groupName> <voiceMessage>
+      recordGroup <groupName>
+
+
+## Call a friend
+
+It is used to call a friend.
+
+      callTo <friendName>
+
+## Call in group
+
+It is used to call a group.
+
+      callGroup <groupName>
+
+## Stop a call with a friend
+
+It is used to stop a call with a friend.
+
+      stop
+
+## Stop a call in a group
+
+It is used to stop a call in a group.
+
+      stopGroup
+
+## List created groups
+
+It is used to list the created groups.
+
+      listGroup
+
+## Leave a group
+
+It is used to leave a group that you belong.
+
+      leaveGroup
+
+## Remove friend
+
+It is used to remove a friend.
+
+      removeFriend <friendName>
+
+**Example**
+      removeFriend juanito
+
+## Logout
+To close the chat.
+
+      logout
