@@ -136,7 +136,7 @@ It is used to list the created groups.
 
 It is used to leave a group that you belong.
 
-      leaveGroup
+      leaveGroup <groupName>
 
 ## Remove friend
 

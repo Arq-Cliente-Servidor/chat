@@ -39,6 +39,12 @@ public:
     return "";
   }
 
+  bool getCanCall(const string &name) { return users[name].getCanCall(); }
+
+  void setCanCall(const string &name, const bool isCall) {
+    users[name].setCanCall(isCall);
+  }
+
   bool isFriend(const string &userName, const string &friendName) {
     if (isUser(friendName)) {
       return users[userName].isFriend(friendName);
@@ -144,6 +150,7 @@ public:
       message m;
       string txt = "The group " + groupName + " has been created.";
       groups[groupName].push_back(name);
+      setCanCall(name, true);
       cout << txt << endl;
       m << id << "warning" << txt << true;
       send(m);
@@ -175,6 +182,7 @@ public:
               isConnected(friendName) and belongsGroup(groupName, senderName)) {
 
       groups[groupName].push_back(friendName);
+      setCanCall(friendName, true);
       for (const auto &user : groups[groupName]) {
         string id = getId(user);
         if (id.size()) {
@@ -284,7 +292,8 @@ public:
     if (isGroup(groupName)) {
       for (const auto &user : groups[groupName]) {
         string id = getId(user);
-        if (id.size() and id != sender) {
+        if (!isCall) setCanCall(user, true);
+        if (id.size() and id != sender and getCanCall(user)) {
           message m;
           string act = (isCall) ? "callGroupReceive" : "recordReceiveGroup";
           m << id << act << groupName << senderName << samples << sampleCount << channelCount << sampleRate;
@@ -339,6 +348,7 @@ public:
   }
 
   void stopGroup(const string &sender, const string &senderName) {
+    setCanCall(senderName, false);
     message m;
     m << sender << "endCall" << true;
     send(m);

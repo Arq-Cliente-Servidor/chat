@@ -162,6 +162,7 @@ void recordTo(message &msg, const string &sender, const string &senderName,
 
 void recordGroup(message &msg, const string &sender, const string &senderName,
                  ServerState &server, bool isCall = false) {
+
   if (msg.parts() < 7 or !checker(msg, 7, sender, server)) return;
 
   string groupName;
@@ -196,13 +197,13 @@ void callRequest(message &msg, const string &sender, const string &senderName, S
     string txt = (senderName == friendName)
                      ? "You can not make calls yourself!"
                      : friendName + " is offline/not exist/not your friend";
+
     m << sender << "warning" << txt << true;
     server.send(m);
   }
 }
 
 void acceptCall(message &msg, const string &sender, const string &senderName, ServerState &server) {
-  // cout << "PARTS: " << msg.parts() << endl;
   string friendName;
   msg >> friendName;
   bool accept;
@@ -267,10 +268,6 @@ void listGroup(const string &sender, const string &senderName, ServerState &serv
   server.listGroup(senderName);
 }
 
-void stopGroup(const string &sender, const string &senderName, ServerState &server) {
-  server.stopGroup(sender, senderName);
-}
-
 void dispatch(message &msg, ServerState &server) {
   string sender;
   msg >> sender;
@@ -322,7 +319,7 @@ void dispatch(message &msg, ServerState &server) {
   } else if (action == "leaveGroup") {
     leaveGroup(msg, sender, senderName, server);
   } else if (action == "stopGroup") {
-    stopGroup(sender, senderName, server);
+    server.stopGroup(sender, senderName);
   } else if (action == "warning") {
     warning(msg, sender, senderName, server);
   } else if (action == "listGroup") {
@@ -342,9 +339,6 @@ int main(int argc, char *argv[]) {
   s.bind(endpoint);
 
   ServerState state(s);
-  state.newUser("sebas", "123", "");
-  state.newUser("caro", "123", "");
-  state.newUser("pepe", "123", "");
 
   while (true) {
     message req;

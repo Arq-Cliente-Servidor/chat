@@ -9,13 +9,14 @@ private:
   std::string password;
   std::string netId;
   bool connected;
+  bool canCall;
   std::list<std::string> contacts;
 
 public:
   User() {}
   // Attribute initialization
   User(const std::string &name, const std::string &pwd, const std::string &id)
-      : name(name), password(pwd), netId(id), connected(false) {}
+      : name(name), password(pwd), netId(id), connected(false), canCall(false) {}
 
   bool isPassword(const std::string &pwd) const { return password == pwd; }
 
@@ -23,9 +24,16 @@ public:
 
   const std::string &getName() const { return name; }
 
+  const bool &getCanCall() const { return canCall; }
+
   void connect(const std::string &id) {
     connected = true;
+    canCall = true;
     netId = id;
+  }
+
+  void setCanCall(const bool iscall) {
+    canCall = iscall;
   }
 
   void disconnect(const std::string &id) {
